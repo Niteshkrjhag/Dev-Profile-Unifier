@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dev Profile Unifier - API Data Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Dev Profile Data Viewer</h1>
+            <p>Explore the data collected from various developer platforms</p>
+            
+            <div class="controls">
+                <button class="btn active" id="btn-nitesh-only" onclick="loadData('data_nitesh_only.json')">
+                    Name Only
+                </button>
+                <button class="btn" id="btn-nitesh-handle" onclick="loadData('data_nitesh_handle.json')">
+                    Name + 1 Handle
+                </button>
+                <button class="btn" id="btn-specific-handles" onclick="loadData('data_specific_handles.json')">
+                    Specific Platform Handles
+                </button>
+            </div>
+
+            <div class="search-container">
+                <input type="text" id="search-box" class="search-input" placeholder="Search JSON data (e.g. email, followers)...">
+            </div>
+        </header>
+
+        <main id="app-content">
+            <div class="loading" id="loading-spinner" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading API Data...</p>
+            </div>
+            
+            <div id="error-message" class="error-banner" style="display: none;"></div>
+
+            <div id="results-container" class="grid-layout">
+                <!-- GitHub Card -->
+                <div class="card glass">
+                    <div class="card-header">
+                        <h2>GitHub</h2>
+                        <span class="badge github">REST API</span>
+                    </div>
+                    <div class="card-body">
+                        <h3>Search by Name</h3>
+                        <pre><code id="gh-name">No data</code></pre>
+                        
+                        <h3>Fetch by Handle</h3>
+                        <pre><code id="gh-handle">No data</code></pre>
+                    </div>
+                </div>
+
+                <!-- Stack Exchange Card -->
+                <div class="card glass">
+                    <div class="card-header">
+                        <h2>Stack Overflow</h2>
+                        <span class="badge stackoverflow">Stack Exchange API</span>
+                    </div>
+                    <div class="card-body">
+                        <h3>Search by Name</h3>
+                        <pre><code id="so-name">No data</code></pre>
+                        
+                        <h3>Search by Handle</h3>
+                        <pre><code id="so-handle">No data</code></pre>
+                    </div>
+                </div>
+
+                <!-- dev.to Card -->
+                <div class="card glass">
+                    <div class="card-header">
+                        <h2>dev.to</h2>
+                        <span class="badge devto">Forem API</span>
+                    </div>
+                    <div class="card-body">
+                        <h3>Fetch by Handle</h3>
+                        <pre><code id="devto-handle">No data</code></pre>
+                    </div>
+                </div>
+
+                <!-- Hacker News Card -->
+                <div class="card glass">
+                    <div class="card-header">
+                        <h2>Hacker News</h2>
+                        <span class="badge hackernews">Algolia Search API</span>
+                    </div>
+                    <div class="card-body">
+                        <h3>Fetch by Handle</h3>
+                        <pre><code id="hn-handle">No data</code></pre>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
