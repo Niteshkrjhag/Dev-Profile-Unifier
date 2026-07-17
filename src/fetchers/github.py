@@ -87,7 +87,8 @@ class GithubFetcher(BaseFetcher):
         """
         Searches GitHub users by name or email. Returns the first strong match's full profile if found.
         """
-        query = f'"{name}"'
+        # Searching without exact quotes for broader matching
+        query = f"{name} in:name"
         res = requests.get(f"{self.base_url}/search/users?q={query}", headers=self.headers)
         if res.status_code == 200:
             items = res.json().get("items", [])
