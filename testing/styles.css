@@ -34,7 +34,7 @@ body {
 
 header {
     text-align: center;
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
     animation: fadeInDown 0.8s ease-out;
 }
 
@@ -50,59 +50,6 @@ h1 {
 header p {
     color: var(--text-secondary);
     font-size: 1.1rem;
-    margin-bottom: 1.5rem;
-}
-
-.controls {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-}
-
-.btn {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    color: var(--text-primary);
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-}
-
-.btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-2px);
-}
-
-.btn.active {
-    background: rgba(56, 189, 248, 0.2);
-    border-color: #38bdf8;
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
-}
-
-.grid-layout {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-    gap: 2rem;
-}
-
-.card {
-    border-radius: 16px;
-    padding: 1.5rem;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    animation: fadeInUp 0.8s ease-out backwards;
-}
-
-.card:nth-child(2) { animation-delay: 0.1s; }
-.card:nth-child(3) { animation-delay: 0.2s; }
-.card:nth-child(4) { animation-delay: 0.3s; }
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .glass {
@@ -110,6 +57,100 @@ header p {
     border: 1px solid var(--card-border);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+}
+
+/* Form Styles */
+.search-section {
+    padding: 2rem;
+    margin-bottom: 2rem;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.form-group.required label::after {
+    content: " *";
+    color: #ef4444;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.submit-btn {
+    display: block;
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(to right, #38bdf8, #818cf8);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+}
+
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(56, 189, 248, 0.4);
+}
+
+.submit-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Results Grid */
+.grid-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.card {
+    padding: 1.5rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: fadeInUp 0.8s ease-out backwards;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .card-header {
@@ -140,16 +181,6 @@ header p {
 .badge.devto { background: rgba(59, 73, 223, 0.2); color: #8a96ff; }
 .badge.hackernews { background: rgba(255, 102, 0, 0.2); color: var(--hn-color); }
 
-.card-body h3 {
-    font-size: 1rem;
-    color: var(--text-secondary);
-    margin: 1.5rem 0 0.5rem 0;
-}
-
-.card-body h3:first-child {
-    margin-top: 0;
-}
-
 pre {
     background: rgba(0, 0, 0, 0.3);
     border-radius: 8px;
@@ -160,15 +191,15 @@ pre {
     border: 1px solid rgba(255,255,255,0.05);
 }
 
-.search-container {
-    margin-top: 1.5rem;
-    display: flex;
-    justify-content: center;
+code {
+    font-family: 'Fira Code', 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    color: #a5b4fc;
 }
 
+/* In-text search box */
 .search-input {
     width: 100%;
-    max-width: 500px;
     padding: 0.75rem 1.5rem;
     border-radius: 999px;
     border: 1px solid var(--card-border);
@@ -177,7 +208,6 @@ pre {
     font-size: 1rem;
     outline: none;
     transition: all 0.3s ease;
-    backdrop-filter: blur(5px);
 }
 
 .search-input:focus {
@@ -190,12 +220,6 @@ pre {
     color: #000;
     font-weight: bold;
     border-radius: 2px;
-}
-
-code {
-    font-family: 'Fira Code', 'Courier New', Courier, monospace;
-    font-size: 0.85rem;
-    color: #a5b4fc;
 }
 
 /* Utilities */
@@ -245,5 +269,4 @@ code {
 
 @media (max-width: 768px) {
     .grid-layout { grid-template-columns: 1fr; }
-    .controls { flex-direction: column; }
 }

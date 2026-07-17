@@ -1,65 +1,94 @@
 let currentData = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Load default data on start
-    loadData('data_nitesh_only.json');
-
-    // Add event listener for search box
+    const form = document.getElementById('search-form');
+    const submitBtn = document.getElementById('submit-btn');
     const searchBox = document.getElementById('search-box');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const requestBody = {
+            name: formData.get('name'),
+            email: formData.get('email'),
+            handle: formData.get('handle'),
+            specific_handles: {
+                github: formData.get('gh'),
+                stackoverflow: formData.get('so'),
+                devto: formData.get('devto'),
+                hackernews: formData.get('hn')
+            }
+        };
+
+        // Clean up empty strings
+        for (const key in requestBody.specific_handles) {
+            if (!requestBody.specific_handles[key]) {
+                delete requestBody.specific_handles[key];
+            }
+        }
+
+        await fetchProfiles(requestBody);
+    });
+
     searchBox.addEventListener('input', (e) => {
         const searchTerm = e.target.value;
         renderData(searchTerm);
     });
 });
 
-async function loadData(filename) {
-    // Update button states
-    document.querySelectorAll('.btn').forEach(btn => btn.classList.remove('active'));
-    
-    if (filename === 'data_nitesh_only.json') {
-        document.getElementById('btn-nitesh-only').classList.add('active');
-    } else if (filename === 'data_nitesh_handle.json') {
-        document.getElementById('btn-nitesh-handle').classList.add('active');
-    } else {
-        document.getElementById('btn-specific-handles').classList.add('active');
-    }
-
+async function fetchProfiles(requestBody) {
+    const submitBtn = document.getElementById('submit-btn');
     const errorBanner = document.getElementById('error-message');
     const loadingSpinner = document.getElementById('loading-spinner');
     const resultsContainer = document.getElementById('results-container');
     
+    submitBtn.disabled = true;
     errorBanner.style.display = 'none';
     resultsContainer.style.opacity = '0.3';
     loadingSpinner.style.display = 'flex';
 
     try {
-        const response = await fetch(filename);
+        const response = await fetch('/api/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
         if (!response.ok) {
-            throw new Error(`Failed to load ${filename}: ${response.statusText}`);
+            const errData = await response.json();
+            throw new Error(errData.error || `Server error: ${response.status}`);
         }
         
-        currentData = await response.json();
+        const responseData = await response.json();
         
-        // Reset search box
+        // Cache data globally for the sub-text search highlighting
+        currentData = responseData;
+        
+        // Reset sub-text search box
         document.getElementById('search-box').value = '';
         renderData('');
         
     } catch (err) {
         console.error(err);
-        errorBanner.textContent = `Error loading data. Make sure you are running a local server (e.g. python3 -m http.server). Details: ${err.message}`;
+        errorBanner.textContent = err.message;
         errorBanner.style.display = 'block';
     } finally {
+        submitBtn.disabled = false;
         loadingSpinner.style.display = 'none';
         resultsContainer.style.opacity = '1';
     }
 }
 
 function renderData(searchTerm) {
-    if (!currentData) return;
+    if (!currentData || !currentData.data) return;
 
     // Helper to safely format JSON and highlight search term
     const formatAndHighlight = (obj, term) => {
-        if (!obj) return 'No data';
+        if (!obj || (Array.isArray(obj) && obj.length === 0) || (typeof obj === 'object' && Object.keys(obj).length === 0)) {
+            return 'No data found.';
+        }
+        
         let str = JSON.stringify(obj, null, 2);
         
         // Escape HTML
@@ -74,23 +103,12 @@ function renderData(searchTerm) {
         return str;
     };
 
-    // GitHub
-    const ghName = currentData.github?.search_by_name;
-    const ghHandle = currentData.github?.fetch_by_handle;
-    document.getElementById('gh-name').innerHTML = formatAndHighlight(ghName, searchTerm);
-    document.getElementById('gh-handle').innerHTML = formatAndHighlight(ghHandle, searchTerm);
+    // Render each platform card data
+    document.getElementById('gh-data').innerHTML = formatAndHighlight(currentData.data.github, searchTerm);
+    document.getElementById('so-data').innerHTML = formatAndHighlight(currentData.data.stackoverflow, searchTerm);
+    document.getElementById('devto-data').innerHTML = formatAndHighlight(currentData.data.devto, searchTerm);
+    document.getElementById('hn-data').innerHTML = formatAndHighlight(currentData.data.hackernews, searchTerm);
     
-    // Stack Overflow
-    const soName = currentData.stackexchange?.search_by_name;
-    const soHandle = currentData.stackexchange?.search_by_handle;
-    document.getElementById('so-name').innerHTML = formatAndHighlight(soName, searchTerm);
-    document.getElementById('so-handle').innerHTML = formatAndHighlight(soHandle, searchTerm);
-    
-    // dev.to
-    const devtoHandle = currentData.devto?.fetch_by_handle;
-    document.getElementById('devto-handle').innerHTML = formatAndHighlight(devtoHandle, searchTerm);
-    
-    // Hacker News
-    const hnHandle = currentData.hackernews?.fetch_by_handle;
-    document.getElementById('hn-handle').innerHTML = formatAndHighlight(hnHandle, searchTerm);
+    // Render discovery metadata
+    document.getElementById('meta-data').innerHTML = formatAndHighlight(currentData.metadata, searchTerm);
 }

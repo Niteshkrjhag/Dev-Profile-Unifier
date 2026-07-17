@@ -3,37 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dev Profile Unifier - API Data Viewer</title>
+    <title>Dev Profile Unifier</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Dev Profile Data Viewer</h1>
-            <p>Explore the data collected from various developer platforms</p>
-            
-            <div class="controls">
-                <button class="btn active" id="btn-nitesh-only" onclick="loadData('data_nitesh_only.json')">
-                    Name Only
-                </button>
-                <button class="btn" id="btn-nitesh-handle" onclick="loadData('data_nitesh_handle.json')">
-                    Name + 1 Handle
-                </button>
-                <button class="btn" id="btn-specific-handles" onclick="loadData('data_specific_handles.json')">
-                    Specific Platform Handles
-                </button>
-            </div>
-
-            <div class="search-container">
-                <input type="text" id="search-box" class="search-input" placeholder="Search JSON data (e.g. email, followers)...">
-            </div>
+            <h1>Dev Profile Unifier</h1>
+            <p>Enter developer details to search across multiple platforms and cross-pollinate handles.</p>
         </header>
+
+        <section class="search-section glass">
+            <form id="search-form">
+                <div class="form-group required">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name" placeholder="e.g. Nitesh kr jha" required>
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" placeholder="e.g. user@gmail.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="handle">Generic Handle (All Platforms)</label>
+                        <input type="text" id="handle" name="handle" placeholder="e.g. niteshkrjhag">
+                    </div>
+                    <div class="form-group">
+                        <label for="gh">GitHub Handle</label>
+                        <input type="text" id="gh" name="gh" placeholder="e.g. niteshkrjhag">
+                    </div>
+                    <div class="form-group">
+                        <label for="so">Stack Overflow Name/Handle</label>
+                        <input type="text" id="so" name="so" placeholder="e.g. Nitesh kr jha">
+                    </div>
+                    <div class="form-group">
+                        <label for="devto">Dev.to Handle</label>
+                        <input type="text" id="devto" name="devto" placeholder="e.g. nitesh_krjha_3b665153b84">
+                    </div>
+                    <div class="form-group">
+                        <label for="hn">Hacker News Handle</label>
+                        <input type="text" id="hn" name="hn" placeholder="e.g. niteshkrjhag">
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn" id="submit-btn">Search Profiles</button>
+            </form>
+        </section>
+
+        <section class="search-container glass" style="margin-top: 2rem; padding: 1rem;">
+            <input type="text" id="search-box" class="search-input" placeholder="Search within fetched JSON (e.g. reputation, Python)...">
+        </section>
 
         <main id="app-content">
             <div class="loading" id="loading-spinner" style="display: none;">
                 <div class="spinner"></div>
-                <p>Loading API Data...</p>
+                <p>Collecting data from all APIs... This may take a moment.</p>
             </div>
             
             <div id="error-message" class="error-banner" style="display: none;"></div>
@@ -46,11 +72,7 @@
                         <span class="badge github">REST API</span>
                     </div>
                     <div class="card-body">
-                        <h3>Search by Name</h3>
-                        <pre><code id="gh-name">No data</code></pre>
-                        
-                        <h3>Fetch by Handle</h3>
-                        <pre><code id="gh-handle">No data</code></pre>
+                        <pre><code id="gh-data">No data</code></pre>
                     </div>
                 </div>
 
@@ -61,11 +83,7 @@
                         <span class="badge stackoverflow">Stack Exchange API</span>
                     </div>
                     <div class="card-body">
-                        <h3>Search by Name</h3>
-                        <pre><code id="so-name">No data</code></pre>
-                        
-                        <h3>Search by Handle</h3>
-                        <pre><code id="so-handle">No data</code></pre>
+                        <pre><code id="so-data">No data</code></pre>
                     </div>
                 </div>
 
@@ -76,8 +94,7 @@
                         <span class="badge devto">Forem API</span>
                     </div>
                     <div class="card-body">
-                        <h3>Fetch by Handle</h3>
-                        <pre><code id="devto-handle">No data</code></pre>
+                        <pre><code id="devto-data">No data</code></pre>
                     </div>
                 </div>
 
@@ -88,9 +105,18 @@
                         <span class="badge hackernews">Algolia Search API</span>
                     </div>
                     <div class="card-body">
-                        <h3>Fetch by Handle</h3>
-                        <pre><code id="hn-handle">No data</code></pre>
+                        <pre><code id="hn-data">No data</code></pre>
                     </div>
+                </div>
+            </div>
+            
+            <div class="card glass" style="margin-top: 2rem;">
+                <div class="card-header">
+                    <h2>Discovery Engine Metadata</h2>
+                    <span class="badge" style="background: rgba(255,255,255,0.2); color: white;">Cross-Pollination</span>
+                </div>
+                <div class="card-body">
+                    <pre><code id="meta-data">No data</code></pre>
                 </div>
             </div>
         </main>
