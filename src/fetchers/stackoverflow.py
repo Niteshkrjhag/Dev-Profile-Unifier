@@ -79,3 +79,12 @@ class StackOverflowFetcher(BaseFetcher):
                     # Return the user ID of the highest reputation match
                     return str(items[0]["account_id"])
         return ""
+
+    async def search_by_name(self, name: str) -> Dict[str, Any]:
+        """
+        Asynchronously searches for a profile by name.
+        """
+        user_id = await self._search_for_user_id(name)
+        if user_id:
+            return await self.fetch_by_handle(user_id)
+        return {}

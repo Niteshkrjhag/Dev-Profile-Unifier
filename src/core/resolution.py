@@ -90,6 +90,10 @@ class ProfileResolver:
             is_match, conf, reason, tokens = self.llm.tiebreaker_resolution(base_data, compare_data)
             tracker.record_llm_usage(tokens)
             
+            # Truncate reason to fit varchar(255) schema
+            if len(reason) > 250:
+                reason = reason[:247] + "..."
+            
             if conf >= 0.85:
                 self.db.link_profile(canonical_id, raw_id, conf, reason, "confirmed")
             elif conf >= 0.5:

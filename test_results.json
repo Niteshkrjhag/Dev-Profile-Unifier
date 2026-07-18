@@ -1,0 +1,108 @@
+{
+    "metadata": {
+        "inputs": {
+            "name": "Nitesh kr jha",
+            "generic_handle": null,
+            "email": null,
+            "specific_handles": {
+                "github": "niteshkrjhag",
+                "stackoverflow": "Nitesh kr jha",
+                "devto": "nitesh_krjha_3b665153b84",
+                "hackernews": "niteshkrjhag"
+            }
+        },
+        "discovered_handles": {
+            "github": "Niteshkrjhag",
+            "stackoverflow": "nitesh-kr-jha"
+        }
+    },
+    "data": {
+        "github": {
+            "platform": "github",
+            "handle": "niteshkrjhag",
+            "profile": {
+                "name": "Nitesh kumar Jha",
+                "bio": null,
+                "location": null,
+                "public_repos": 27,
+                "followers": 8,
+                "following": 4,
+                "blog": "",
+                "twitter_username": null,
+                "avatar_url": "https://avatars.githubusercontent.com/u/121478119?v=4",
+                "html_url": "https://github.com/Niteshkrjhag"
+            },
+            "languages": {
+                "CSS": 1,
+                "Python": 9,
+                "Jupyter Notebook": 2,
+                "C": 1,
+                "Kotlin": 9,
+                "Roff": 1,
+                "C++": 3
+            },
+            "recent_activity": []
+        },
+        "stackoverflow": {
+            "platform": "stackoverflow",
+            "search_query": "Nitesh kr jha",
+            "matched_users": [
+                {
+                    "profile": {
+                        "user_id": 13666482,
+                        "display_name": "Nitesh Kr Jha",
+                        "reputation": 1,
+                        "location": "Amritsar, Punjab, India",
+                        "website_url": null,
+                        "link": "https://stackoverflow.com/users/13666482/nitesh-kr-jha",
+                        "profile_image": "https://lh3.googleusercontent.com/a-/AOh14GiRDCTdWk1r5X4Gln21Tx3IMJlOzZ6DM7GJLat5DA=k-s256"
+                    },
+                    "top_tags": [],
+                    "top_answers": [],
+                    "top_questions": []
+                },
+                {
+                    "profile": {
+                        "user_id": 22570025,
+                        "display_name": "Nitesh kr jha",
+                        "reputation": 1,
+                        "location": null,
+                        "website_url": null,
+                        "link": "https://stackoverflow.com/users/22570025/nitesh-kr-jha",
+                        "profile_image": "https://lh3.googleusercontent.com/a/ACg8ocLydLSVWuxWoIqUbLdTMK7M4GZkNqo_CZxpN3x3enDaIg=k-s256"
+                    },
+                    "top_tags": [],
+                    "top_answers": [],
+                    "top_questions": []
+                }
+            ]
+        },
+        "devto": {
+            "platform": "devto",
+            "handle": "nitesh_krjha_3b665153b84",
+            "profile": {
+                "name": "Nitesh kr jha",
+                "summary": null,
+                "location": null,
+                "website_url": null,
+                "github_details": null,
+                "twitter_username": null,
+                "profile_image": "https://media2.dev.to/dynamic/image/width=320,height=320,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.us-east-2.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F4034164%2F137e09f6-c92b-4ee9-b80f-6ae3efac2599.jpg"
+            },
+            "published_articles": [],
+            "tags_written_about": {}
+        },
+        "hackernews": {
+            "platform": "hackernews",
+            "handle": "niteshkrjhag",
+            "profile": {
+                "username": "niteshkrjhag",
+                "about": null,
+                "karma": 1,
+                "created_at": null
+            },
+            "submissions": [],
+            "comments": []
+        }
+    }
+}
