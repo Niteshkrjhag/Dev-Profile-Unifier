@@ -2,6 +2,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from src.core.observability import tracker
 from src.core.resolution import ProfileResolver
 from src.core.supabase_client import SupabaseDB
@@ -79,3 +83,29 @@ async def get_profile(profile_id: str):
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found or no confirmed links.")
     return profile
+
+class LinkStatusUpdate(BaseModel):
+    status: str # "confirmed" or "rejected"
+
+@app.get("/admin/links")
+async def get_admin_links():
+    """
+    Fetches all links requiring admin audit (pending_review or rejected).
+    """
+    db = SupabaseDB()
+    return db.get_review_links()
+
+@app.put("/admin/links/{canonical_id}/{raw_profile_id}")
+async def update_admin_link(canonical_id: str, raw_profile_id: str, payload: LinkStatusUpdate):
+    """
+    Manually overrides the status of a specific link.
+    """
+    if payload.status not in ["confirmed", "rejected"]:
+        raise HTTPException(status_code=400, detail="Status must be 'confirmed' or 'rejected'")
+    
+    db = SupabaseDB()
+    try:
+        db.update_link_status(canonical_id, raw_profile_id, payload.status)
+        return {"status": "success", "new_status": payload.status}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

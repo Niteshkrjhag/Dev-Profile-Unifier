@@ -68,3 +68,27 @@ class SupabaseDB:
         if not res.data:
             return None
         return res.data[0]
+
+    def get_review_links(self) -> list:
+        """
+        Fetches all entity links that are pending_review or rejected.
+        Includes the canonical entity name and the raw profile data.
+        """
+        res = self.client.table("entity_links") \
+            .select("*, canonical_entities(primary_name), raw_profiles(platform, handle, raw_data)") \
+            .in_("status", ["pending_review", "rejected"]) \
+            .execute()
+        return res.data
+
+    def update_link_status(self, canonical_id: str, raw_profile_id: str, new_status: str):
+        """
+        Admin action to manually confirm or reject an entity link.
+        """
+        if new_status not in ["confirmed", "rejected"]:
+            raise ValueError("Status must be 'confirmed' or 'rejected'")
+            
+        self.client.table("entity_links") \
+            .update({"status": new_status}) \
+            .eq("canonical_id", canonical_id) \
+            .eq("raw_profile_id", raw_profile_id) \
+            .execute()
