@@ -8,17 +8,30 @@ export default function DocsTab() {
 
       <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
         <section>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>The Resolution Funnel</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            The API resolves fragmented accounts into a unified Canonical Entity using a tiered system. 
-            If exact handles are provided, they are merged deterministically (Tier 1). Otherwise, 
-            profiles are fetched based on a cross-platform name search. 
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '16px' }}>The 4-Tier Resolution Engine</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
+            Master Data Management (MDM) requires determining if two platform accounts belong to the exact same human. We solve this using a deterministic-to-heuristic funnel:
           </p>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>
-            Ambiguous matches are routed to a Gemini 3.5 Flash LLM (Tier 4) which scores the match.
-            Scores &gt; 0.85 are automatically merged. Scores between 0.50 and 0.85 trigger an HTTP 300 
-            Multiple Choices response (Approach 2) requiring a human admin override.
-          </p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
+              <strong>Tier 1 (Explicit Anchor):</strong> If the user provides an exact platform handle (e.g., github: <code>Niteshkrjhag</code>) in the payload, the system bypasses searching and treats it as a 1.0 confidence match.
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
+              <strong>Tier 2 (Cross-Pollination):</strong> (Conceptual) Extracting social links explicitly listed on a fetched profile (e.g., a Twitter link found in a GitHub bio) to definitively link the next platform.
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
+              <strong>Tier 3 (Heuristic Overlaps):</strong> (Conceptual) Calculating Levenshtein string distance on names, locations, and intersecting tech stacks before resorting to expensive LLM inference.
+            </div>
+            <div style={{ background: 'var(--accent-color)', color: 'white', padding: '12px', borderRadius: '8px' }}>
+              <strong>Tier 4 (LLM Semantic Judge):</strong> For ambiguous name-based searches, the raw JSON of the candidate profile is passed alongside our anchor data to <code>Gemini 3.5 Flash</code>. The LLM acts as a tie-breaker, analyzing nuanced signals (writing style, repo activity).
+              <ul style={{ paddingLeft: '20px', marginTop: '8px', opacity: 0.9 }}>
+                <li><strong>&gt; 0.85:</strong> Auto-merged.</li>
+                <li><strong>0.50 - 0.85:</strong> Halted & marked <code>pending_review</code> (Requires Admin Audit).</li>
+                <li><strong>&lt; 0.50:</strong> Rejected.</li>
+              </ul>
+            </div>
+          </div>
         </section>
 
         <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.1)' }} />
@@ -40,6 +53,14 @@ export default function DocsTab() {
               <code style={{ fontSize: '1.1rem', fontWeight: 500 }}>/profiles/&#123;id&#125;</code>
             </div>
             <p style={{ color: 'var(--text-secondary)' }}>Fetches the full unified profile, including the LLM executive summary and all confirmed cross-platform entity links.</p>
+          </div>
+          
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+              <span style={{ background: 'var(--accent-color)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>GET</span>
+              <code style={{ fontSize: '1.1rem', fontWeight: 500 }}>/health</code>
+            </div>
+            <p style={{ color: 'var(--text-secondary)' }}>Returns real-time observability metrics including API usage, LLM token burn, estimated cost, and average resolution latency.</p>
           </div>
 
           <div>
