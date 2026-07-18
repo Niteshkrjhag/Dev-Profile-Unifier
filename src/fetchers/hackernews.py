@@ -1,4 +1,4 @@
-import requests
+import httpx
 from typing import Dict, Any
 from src.core.base_fetcher import BaseFetcher
 
@@ -6,58 +6,39 @@ class HackerNewsFetcher(BaseFetcher):
     def __init__(self):
         self.base_url = "https://hn.algolia.com/api/v1"
 
-    def fetch_by_handle(self, handle: str) -> Dict[str, Any]:
+    async def fetch_by_handle(self, handle: str) -> Dict[str, Any]:
         """
-        Fetches user's comments and submissions from Hacker News via Algolia.
+        Asynchronously fetches recent comments and submissions for a Hacker News user.
         """
-        data = {
-            "platform": "hackernews",
-            "handle": handle,
-            "profile": {},
-            "submissions": [],
-            "comments": []
-        }
-
-        # 1. Profile (mostly just karma/creation date on HN API)
-        prof_res = requests.get(f"{self.base_url}/users/{handle}")
-        if prof_res.status_code == 200:
-            p = prof_res.json()
-            data["profile"] = {
-                "username": p.get("username"),
-                "about": p.get("about"),
-                "karma": p.get("karma"),
-                "created_at": p.get("created_at")
-            }
-        else:
-            return data
-
-        # 2. Activity (Submissions and Comments)
-        act_res = requests.get(f"{self.base_url}/search?tags=author_{handle}&hitsPerPage=30")
-        if act_res.status_code == 200:
-            hits = act_res.json().get("hits", [])
-            for hit in hits:
-                tags = hit.get("_tags", [])
-                created_at = hit.get("created_at")
-                if "story" in tags:
-                    data["submissions"].append({
-                        "title": hit.get("title"),
-                        "url": hit.get("url"),
-                        "points": hit.get("points"),
-                        "num_comments": hit.get("num_comments"),
-                        "created_at": created_at
+        data = {"handle": handle, "profile": {}, "recent_items": []}
+        
+        async with httpx.AsyncClient() as client:
+            # Algolia provides a single endpoint for items authored by a user
+            res = await client.get(f"{self.base_url}/search_by_date?tags=author_{handle}&hitsPerPage=20")
+            if res.status_code == 200:
+                hits = res.json().get("hits", [])
+                if not hits:
+                    return {} # User not found or has no activity
+                
+                parsed_items = []
+                for h in hits:
+                    item_type = h.get("_tags", ["unknown"])[0] if h.get("_tags") else "unknown"
+                    parsed_items.append({
+                        "type": item_type,
+                        "title": h.get("title") or h.get("story_title"),
+                        "text": h.get("comment_text")[:200] if h.get("comment_text") else None,
+                        "created_at": h.get("created_at"),
+                        "points": h.get("points")
                     })
-                elif "comment" in tags:
-                    data["comments"].append({
-                        "story_title": hit.get("story_title"),
-                        "comment_text": hit.get("comment_text")[:200] + "..." if hit.get("comment_text") else "",
-                        "points": hit.get("points", 0),
-                        "created_at": created_at
-                    })
+                
+                data["recent_items"] = parsed_items
+                # Fake a profile since HN Algolia doesn't provide rich user bios
+                data["profile"] = {"username": handle, "activity_count": len(hits)}
 
         return data
 
-    def search_by_name(self, name: str) -> Dict[str, Any]:
+    async def search_by_name(self, name: str) -> Dict[str, Any]:
         """
-        HN does not have a generic name search for users, only handles.
+        HN Algolia API doesn't support searching by real name reliably.
         """
         return {}
