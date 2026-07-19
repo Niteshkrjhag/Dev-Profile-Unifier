@@ -45,27 +45,27 @@ class StackOverflowFetcher(BaseFetcher):
                 else:
                     return {}
 
-            # 3. Fetch Top Tags
-            tags_res = await client.get(f"{self.base_url}/users/{user_id}/top-tags", params=params)
-            if tags_res.status_code == 200:
-                tags = tags_res.json().get("items", [])
-                data["top_tags"] = [{"tag_name": t["tag_name"], "answer_score": t.get("answer_score", 0)} for t in tags[:10]]
+                # 3. Fetch Top Tags
+                tags_res = await client.get(f"{self.base_url}/users/{user_id}/top-tags", params=params)
+                if tags_res.status_code == 200:
+                    tags = tags_res.json().get("items", [])
+                    data["top_tags"] = [{"tag_name": t["tag_name"], "answer_score": t.get("answer_score", 0)} for t in tags[:10]]
 
-            # 4. Fetch Top Answers
-            answers_params = params.copy()
-            answers_params.update({"order": "desc", "sort": "votes"})
-            answers_res = await client.get(f"{self.base_url}/users/{user_id}/answers", params=answers_params)
-            if answers_res.status_code == 200:
-                answers = answers_res.json().get("items", [])
-                data["top_answers"] = [{"score": a["score"], "is_accepted": a["is_accepted"], "question_id": a["question_id"]} for a in answers[:5]]
-                
-            # 5. Fetch Top Questions
-            questions_res = await client.get(f"{self.base_url}/users/{user_id}/questions", params=answers_params)
-            if questions_res.status_code == 200:
-                questions = questions_res.json().get("items", [])
-                data["top_questions"] = [{"score": q["score"], "title": q["title"], "link": q["link"]} for q in questions[:5]]
+                # 4. Fetch Top Answers
+                answers_params = params.copy()
+                answers_params.update({"order": "desc", "sort": "votes"})
+                answers_res = await client.get(f"{self.base_url}/users/{user_id}/answers", params=answers_params)
+                if answers_res.status_code == 200:
+                    answers = answers_res.json().get("items", [])
+                    data["top_answers"] = [{"score": a["score"], "is_accepted": a["is_accepted"], "question_id": a["question_id"]} for a in answers[:5]]
+                    
+                # 5. Fetch Top Questions
+                questions_res = await client.get(f"{self.base_url}/users/{user_id}/questions", params=answers_params)
+                if questions_res.status_code == 200:
+                    questions = questions_res.json().get("items", [])
+                    data["top_questions"] = [{"score": q["score"], "title": q["title"], "link": q["link"]} for q in questions[:5]]
 
-            return data
+                return data
         except httpx.RequestError as e:
             raise Exception(f"Network error connecting to StackExchange: {str(e)}")
 
@@ -104,7 +104,10 @@ class StackOverflowFetcher(BaseFetcher):
         if not user_ids:
             return []
             
-        tasks = [self.fetch_by_handle(uid) for uid in user_ids]
+        # StackExchange has a strict 30 requests/sec limit.
+        # Fetching 30 users concurrently does 120 API requests simultaneously, which causes silent rate-limit drops.
+        # We cap it to the top 5 candidates.
+        tasks = [self.fetch_by_handle(uid) for uid in user_ids[:5]]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         candidates = []

@@ -94,9 +94,11 @@ class ProfileResolver:
             candidates = []
             results = await asyncio.gather(
                 self.fetchers["github"].search_by_name(name),
-                self.fetchers["stackoverflow"].search_by_name(name)
+                self.fetchers["stackoverflow"].search_by_name(name),
+                self.fetchers["devto"].search_by_name(name),
+                self.fetchers["hackernews"].search_by_name(name)
             )
-            for platform_name, plat_res in zip(["github", "stackoverflow"], results):
+            for platform_name, plat_res in zip(["github", "stackoverflow", "devto", "hackernews"], results):
                 for c in plat_res:
                     match_score = 0
                     if user_metadata:
