@@ -250,11 +250,12 @@ class ProfileResolver:
             
             async def evaluate_candidate(platform, candidate_data):
                 cand_handle = candidate_data.get("handle", "unknown")
-                raw_id = await asyncio.to_thread(self.db.find_raw_profile_id, platform, cand_handle)
-                if not raw_id:
-                    raw_id = await asyncio.to_thread(self.db.insert_raw_profile, platform, cand_handle, candidate_data)
-                
+                raw_id = None
                 try:
+                    raw_id = await asyncio.to_thread(self.db.find_raw_profile_id, platform, cand_handle)
+                    if not raw_id:
+                        raw_id = await asyncio.to_thread(self.db.insert_raw_profile, platform, cand_handle, candidate_data)
+                    
                     is_match, conf, reason_text, tokens = await self.llm.tiebreaker_resolution(base_data, candidate_data, user_metadata)
                     return (platform, cand_handle, raw_id, candidate_data, is_match, conf, reason_text, tokens, None)
                 except Exception as e:

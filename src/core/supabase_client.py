@@ -32,6 +32,15 @@ class SupabaseDB:
             return res.data[0]["raw_data"]
         return None
 
+    def find_raw_profile_id(self, platform: str, handle: str) -> str:
+        """
+        Fetches the UUID of a raw profile if it exists.
+        """
+        res = self.client.table("raw_profiles").select("id").eq("platform", platform).eq("handle", handle).execute()
+        if res.data and len(res.data) > 0:
+            return res.data[0]["id"]
+        return None
+
     def create_canonical_entity(self, primary_name: str, llm_summary: str = None) -> str:
         """
         Creates a new canonical person entity.
