@@ -65,6 +65,13 @@ class ProfileResolver:
         for platform, handle in handles.items():
             cached_id = self.db.find_canonical_by_handle(platform, handle)
             if cached_id:
+                # Self-healing: if the cached profile is missing its LLM summary, generate it now
+                profile = self.db.get_full_canonical_profile(cached_id)
+                if profile and not profile.get("llm_summary"):
+                    summary_text, tokens = self.llm.generate_summary(str(profile))
+                    tracker.record_llm_usage(tokens)
+                    self.db.update_canonical_summary(cached_id, summary_text)
+                    
                 tracker.record_resolution_time((asyncio.get_event_loop().time() - start_time) * 1000)
                 return {"status": "success", "canonical_id": cached_id}
 
