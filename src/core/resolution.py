@@ -37,7 +37,7 @@ class ProfileResolver:
         if so_match:
             extracted["stackoverflow"] = so_match.group(1)
             
-        devto_match = re.search(r'(?:dev\.to/|dev\.to/@)([a-zA-Z0-9_]+)', metadata_str)
+        devto_match = re.search(r'(?:dev\.to/|dev\.to/@)([a-zA-Z0-9_-]+)', metadata_str)
         if devto_match:
             extracted["devto"] = devto_match.group(1)
             
@@ -49,12 +49,18 @@ class ProfileResolver:
 
     async def resolve_and_store(self, name: str, handles: dict, user_metadata: dict = None) -> Dict[str, Any]:
         """
-        Executes the Iterative Graph Crawler pipeline.
+        Executes the Iterative Graph Crawler & LLM Tiebreaker resolution pipeline.
         Returns Canonical ID or 300 Multiple Choices if disambiguation is needed.
         """
         start_time = asyncio.get_event_loop().time()
         
-        # Phase 0: Persistent Cache Check
+        fetched_profiles = {}
+        canonical_id = None
+
+        if not handles:
+            handles = {}
+
+        # Phase 0: Cache Check
         for platform, handle in handles.items():
             cached_id = self.db.find_canonical_by_handle(platform, handle)
             if cached_id:
@@ -86,6 +92,13 @@ class ProfileResolver:
                         "match_score": match_score,
                         "data": c
                     })
+                
+            if not candidates:
+                return {
+                    "status": "error",
+                    "canonical_id": None,
+                    "message": f"No candidates found for the name '{name}' across primary platforms."
+                }
                 
             # Sort candidates by match_score descending
             candidates.sort(key=lambda x: x["match_score"], reverse=True)
