@@ -47,84 +47,130 @@ export default function AdminTab() {
     });
   };
 
+  // Group links by Target Entity (Canonical Name)
+  const groupedLinks = links.reduce((acc, link) => {
+    const entityName = link.canonical_entities?.primary_name || "Unknown Entity";
+    if (!acc[entityName]) {
+      acc[entityName] = { pending_review: [], rejected: [] };
+    }
+    if (link.status === 'pending_review') {
+      acc[entityName].pending_review.push(link);
+    } else if (link.status === 'rejected') {
+      acc[entityName].rejected.push(link);
+    }
+    return acc;
+  }, {});
+
   if (loading) return <div>Loading admin audits...</div>;
   if (error) return <div style={{ color: 'var(--danger-color)' }}>Error: {error}</div>;
+
+  const LinkCard = ({ link, type }) => {
+    const rowId = `${link.canonical_id}-${link.raw_profile_id}`;
+    const isExpanded = expandedRows.has(rowId);
+    const isPending = type === 'pending';
+
+    return (
+      <div style={{ 
+        padding: '16px', 
+        background: isPending ? 'rgba(255,204,0,0.05)' : 'rgba(255,59,48,0.05)',
+        border: `1px solid ${isPending ? 'rgba(255,204,0,0.2)' : 'rgba(255,59,48,0.2)'}`,
+        borderRadius: '8px',
+        marginBottom: '12px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <p style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>
+              <strong style={{ textTransform: 'capitalize' }}>{link.raw_profiles.platform}</strong> &middot; {link.raw_profiles.handle}
+            </p>
+            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+              <strong>LLM Confidence:</strong> {link.confidence_score}
+            </div>
+            <p style={{ fontSize: '0.9rem', marginTop: '8px', lineHeight: '1.4' }}>{link.match_reason}</p>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+            <button className="btn-success" style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={() => handleUpdate(link.canonical_id, link.raw_profile_id, 'confirmed')}>Approve</button>
+            {isPending && (
+              <button className="btn-danger" style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={() => handleUpdate(link.canonical_id, link.raw_profile_id, 'rejected')}>Reject</button>
+            )}
+          </div>
+        </div>
+
+        <div 
+          onClick={() => toggleRow(rowId)}
+          style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--accent-color)', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+        >
+          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {isExpanded ? 'Hide Raw Profile JSON' : 'View Raw Profile JSON'}
+        </div>
+
+        {isExpanded && (
+          <div className="animate-fade-in" style={{ 
+            marginTop: '12px', 
+            background: '#1a1a1a', 
+            padding: '12px', 
+            borderRadius: '6px',
+            overflowX: 'auto'
+          }}>
+            <pre style={{ margin: 0, color: '#d4d4d4', fontSize: '0.8rem', fontFamily: 'monospace' }}>
+              {JSON.stringify(link.raw_profiles.raw_data, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="animate-fade-in">
       <div style={{ marginBottom: '32px' }}>
         <h1>Admin Audit Console</h1>
-        <p>Review flagged entity resolutions (pending review) and explicitly rejected links.</p>
+        <p>Review flagged entity resolutions (pending review) and explicitly rejected links, grouped by your search queries.</p>
       </div>
 
-      {links.length === 0 ? (
+      {Object.keys(groupedLinks).length === 0 ? (
         <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
           All clear! No pending audits.
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {links.map((link) => {
-            const rowId = `${link.canonical_id}-${link.raw_profile_id}`;
-            const isExpanded = expandedRows.has(rowId);
-            const isWarning = link.status !== 'rejected';
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          {Object.entries(groupedLinks).map(([entityName, groups]) => {
+            const hasPending = groups.pending_review.length > 0;
+            const hasRejected = groups.rejected.length > 0;
             
             return (
-              <div key={rowId} className="glass-panel animate-fade-in" style={{ 
-                padding: '24px', 
-                borderLeft: `4px solid ${isWarning ? '#FFCC00' : 'var(--danger-color)'}` 
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ 
-                      fontSize: '0.85rem', fontWeight: 700, 
-                      color: isWarning ? '#b38f00' : 'var(--danger-color)', 
-                      textTransform: 'uppercase', letterSpacing: '1px',
-                      background: isWarning ? 'rgba(255,204,0,0.2)' : 'rgba(255,59,48,0.1)',
-                      display: 'inline-block', padding: '2px 8px', borderRadius: '4px', marginBottom: '8px'
-                    }}>
-                      {link.status.replace('_', ' ')}
-                    </div>
-                    <h3 style={{ marginTop: '4px' }}>Target Entity: {link.canonical_entities.primary_name}</h3>
-                    <p style={{ color: 'var(--text-secondary)' }}>
-                      <strong>Platform:</strong> {link.raw_profiles.platform} &middot; <strong>Handle:</strong> {link.raw_profiles.handle}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn-success" onClick={() => handleUpdate(link.canonical_id, link.raw_profile_id, 'confirmed')}>Approve</button>
-                    {isWarning && (
-                      <button className="btn-danger" onClick={() => handleUpdate(link.canonical_id, link.raw_profile_id, 'rejected')}>Reject</button>
-                    )}
-                  </div>
-                </div>
+              <div key={entityName} className="glass-panel animate-fade-in" style={{ padding: '24px' }}>
+                <h2 style={{ borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '12px', marginBottom: '20px', color: 'var(--accent-color)' }}>
+                  Search Target: {entityName}
+                </h2>
                 
-                <div style={{ marginTop: '16px', background: 'rgba(255,255,255,0.4)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }}>
-                  <h4 style={{ marginBottom: '8px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>LLM Reasoning (Confidence: {link.confidence_score})</span>
-                  </h4>
-                  <p style={{ color: 'var(--text-primary)', fontSize: '0.95rem', lineHeight: '1.5' }}>{link.match_reason}</p>
-                </div>
+                <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                  {/* Pending Review Column */}
+                  {hasPending && (
+                    <div style={{ flex: '1 1 300px' }}>
+                      <h3 style={{ fontSize: '1rem', color: '#b38f00', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#FFCC00' }}></span>
+                        Pending Review ({groups.pending_review.length})
+                      </h3>
+                      {groups.pending_review.map(link => (
+                        <LinkCard key={`${link.canonical_id}-${link.raw_profile_id}`} link={link} type="pending" />
+                      ))}
+                    </div>
+                  )}
 
-                <div 
-                  onClick={() => toggleRow(rowId)}
-                  style={{ marginTop: '16px', display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--accent-color)', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}
-                >
-                  {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  {isExpanded ? 'Hide Raw JSON Data' : 'View Raw JSON Data'}
+                  {/* Rejected Column */}
+                  {hasRejected && (
+                    <div style={{ flex: '1 1 300px' }}>
+                      <h3 style={{ fontSize: '1rem', color: 'var(--danger-color)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--danger-color)' }}></span>
+                        Rejected ({groups.rejected.length})
+                      </h3>
+                      {groups.rejected.map(link => (
+                        <LinkCard key={`${link.canonical_id}-${link.raw_profile_id}`} link={link} type="rejected" />
+                      ))}
+                    </div>
+                  )}
                 </div>
-
-                {isExpanded && (
-                  <div className="animate-fade-in" style={{ 
-                    marginTop: '12px', 
-                    background: '#1e1e1e', 
-                    padding: '16px', 
-                    borderRadius: '8px',
-                    overflowX: 'auto'
-                  }}>
-                    <pre style={{ margin: 0, color: '#e6e6e6', fontSize: '0.85rem', fontFamily: 'monospace' }}>
-                      {JSON.stringify(link.raw_profiles.raw_data, null, 2)}
-                    </pre>
-                  </div>
-                )}
               </div>
             );
           })}
