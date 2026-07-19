@@ -29,18 +29,18 @@ export default function DocsTab() {
   const diagram = `
     graph TD
       A[Client Request] --> B{Exact Handles Provided?}
-      B -- No --> C1[Hash: Name + Location + Workplace]
-      C1 --> C2{Exists in Cache?}
-      C2 -- Yes --> D[Return 300 Cached Choices]
-      C2 -- No --> C3[Fetch APIs & Save to Cache]
-      C3 --> D
-      D --> E[User Selects Match]
+      B -- Yes --> C[Phase 0: DB Cache Check]
       
-      B -- Yes --> F[Phase 0: DB Check]
-      E --> F
+      B -- No --> D1[Phase 1: Hash Name & Metadata]
+      D1 --> D2{Exists in Cache?}
+      D2 -- Yes --> E[Return Cached Choices]
+      D2 -- No --> D3[Fetch APIs & Rank Matches]
+      D3 --> E
+      E --> F[User Selects Match]
+      F --> C
       
-      F --> G{Exists in DB?}
-      G -- Yes --> H[Return Profile]
+      C --> G{Exists in DB?}
+      G -- Yes --> H[Return Instant Profile]
       G -- No --> I[Phase 2: Graph Crawler]
       
       I --> J[Fetch Profiles]
@@ -48,14 +48,13 @@ export default function DocsTab() {
       K --> L{New Links?}
       L -- Yes --> J
       
-      L -- No --> M[Phase 3a: Deterministic]
+      L -- No --> M[Phase 3: Fallback Search]
       M --> N{Missing Platforms?}
       
-      N -- Yes --> O[Phase 3b: Fallback Search]
-      O --> P[Gemini Tiebreaker]
-      P -->|> 0.85| Q[Auto-Merge]
-      P -->|> 0.50| R[Pending Audit]
-      P -->|< 0.50| S[Rejected]
+      N -- Yes --> O[Gemini Tiebreaker]
+      O -->|> 0.85| Q[Auto-Merge]
+      O -->|> 0.50| R[Pending Audit]
+      O -->|< 0.50| S[Rejected]
       
       N -- No --> T[Phase 4: LLM Summary]
       Q --> T
@@ -65,28 +64,34 @@ export default function DocsTab() {
   return (
     <div className="animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ marginBottom: '32px' }}>
-        <h1>Architecture & API</h1>
-        <p>Reference documentation for the Effiflo Dev Profile Unifier.</p>
+        <h1>End-to-End Architecture</h1>
+        <p>A comprehensive guide to how the Effiflo Dev Profile Unifier resolves identities.</p>
       </div>
 
       <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
         <section>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>The Iterative Graph Crawler Pipeline</h2>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>The 5-Phase Resolution Engine</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>
-            Master Data Management (MDM) requires determining if two platform accounts belong to the exact same human. We solve this using a multi-phase deterministic-to-heuristic engine that recursively maps a developer's digital footprint.
+            Identity resolution requires confirming that two disparate digital footprints belong to the exact same human. We solve this using a multi-phase deterministic-to-heuristic engine.
           </p>
           
           <MermaidDiagram chart={diagram} />
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
             <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <strong>Phase 1a (Smart Caching & Disambiguation):</strong> If only a name and metadata (Location, Workplace, etc.) are provided, we hash these exact inputs. We check our Database Cache to prevent redundant API calls. If missing, we fetch from GitHub and StackOverflow, rank them using the metadata, save them to the cache, and present the choices to the user. A background <strong>Cron Job</strong> runs every 12 hours to auto-delete caches older than 3 days, ensuring data never gets stale.
+              <strong>Phase 0 (Database Cache):</strong> If explicit handles are provided, we immediately check our canonical database. If the identity was previously resolved, we skip all network calls and return the unified profile in milliseconds.
             </div>
             <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <strong>Phase 2 (Graph Crawler):</strong> We fetch the initial profile and scan its raw JSON (bio, website, blog links) using regex. If we find a cross-link (e.g. <code>dev.to/nitesh_jha</code> on GitHub), we recursively fetch that new profile. This loops up to 3 times to exhaust the graph deterministicly.
+              <strong>Phase 1 (Disambiguation & Smart Caching):</strong> If only a Name and Metadata (Location, Workplace) are provided, we hash the inputs. If this exact search exists in our cache, we return the options instantly. If not, we fetch candidates from GitHub and StackOverflow, rank them based on bio metadata matches, save the results to the cache, and present the choices to the human user.
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
+              <strong>Phase 2 (Recursive Graph Crawler):</strong> Starting from the anchor profile, the system scans raw JSON (websites, bio links, blog URLs) using regex. If a cross-link is found (e.g., a Dev.to link on GitHub), we recursively fetch that new profile. This loop exhausts the deterministic graph.
             </div>
             <div style={{ background: 'var(--accent-color)', color: 'white', padding: '12px', borderRadius: '8px' }}>
-              <strong>Phase 3 (LLM Tiebreaker):</strong> For any platforms still missing after the deterministic crawl, we perform a fallback name search. The raw JSON of the candidate profile is passed alongside our anchor data to Gemini. The LLM acts as a tie-breaker, analyzing nuanced signals (writing style, repo activity).
+              <strong>Phase 3 (Gemini Tiebreaker):</strong> For any platforms still missing, we perform a fallback heuristic search. The raw JSON of the newly found profile is sent alongside our anchor profile to the LLM. Gemini analyzes signals like repo activity and writing style to score the match. Scores >0.85 are auto-merged; scores >0.50 are flagged for human audit.
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
+              <strong>Phase 4 (Executive Summary):</strong> Once all platforms are verified, the unified data payload is sent to Gemini one last time to generate a professional, cohesive summary of the developer's entire career and impact.
             </div>
           </div>
         </section>
@@ -99,48 +104,11 @@ export default function DocsTab() {
             The API is engineered to handle massive scale without silently failing.
           </p>
           <ul style={{ color: 'var(--text-secondary)', lineHeight: 1.6, paddingLeft: '20px' }}>
-            <li style={{ marginBottom: '8px' }}><strong>10-Second Strict Timeouts:</strong> Prevents our server from freezing if external APIs (like dev.to or HackerNews) go offline.</li>
-            <li style={{ marginBottom: '8px' }}><strong>Rate Limit Protection:</strong> Explicitly intercepts HTTP 429 and StackOverflow "backoff" requests, instantly halting crawls and informing the frontend rather than pretending the user doesn't exist.</li>
+            <li style={{ marginBottom: '8px' }}><strong>10-Second Strict Timeouts:</strong> Prevents our server from freezing if external APIs go offline.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Rate Limit Protection:</strong> Explicitly intercepts HTTP 429 and StackOverflow "backoff" requests, instantly halting crawls and informing the frontend rather than swallowing the error.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Automated Cron Jobs:</strong> A background loop runs every 12 hours to auto-delete Phase 1 caches older than 3 days, ensuring candidate lists never get stale.</li>
             <li style={{ marginBottom: '8px' }}><strong>LLM Markdown Stripping:</strong> A custom regex cleans Gemini JSON outputs, preventing critical tiebreaker crashes if the AI hallucinates markdown formatting.</li>
           </ul>
-        </section>
-
-        <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.1)' }} />
-
-        <section>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '16px' }}>Core Endpoints</h2>
-          
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-              <span style={{ background: 'var(--success-color)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>POST</span>
-              <code style={{ fontSize: '1.1rem', fontWeight: 500 }}>/profiles/resolve</code>
-            </div>
-            <p style={{ color: 'var(--text-secondary)' }}>Accepts a JSON payload with a mandatory <code>name</code> and optional handles. Returns a <code>canonical_id</code> or a list of multiple choices if disambiguation is required.</p>
-          </div>
-
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-              <span style={{ background: 'var(--accent-color)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>GET</span>
-              <code style={{ fontSize: '1.1rem', fontWeight: 500 }}>/profiles/&#123;id&#125;</code>
-            </div>
-            <p style={{ color: 'var(--text-secondary)' }}>Fetches the full unified profile, including the LLM executive summary and all confirmed cross-platform entity links.</p>
-          </div>
-          
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-              <span style={{ background: 'var(--accent-color)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>GET</span>
-              <code style={{ fontSize: '1.1rem', fontWeight: 500 }}>/health</code>
-            </div>
-            <p style={{ color: 'var(--text-secondary)' }}>Returns real-time observability metrics including API usage, LLM token burn, estimated cost, and average resolution latency.</p>
-          </div>
-
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-              <span style={{ background: '#FF9500', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>PUT</span>
-              <code style={{ fontSize: '1.1rem', fontWeight: 500 }}>/admin/links/&#123;canonical_id&#125;/&#123;raw_id&#125;</code>
-            </div>
-            <p style={{ color: 'var(--text-secondary)' }}>Admin route to override a pending link status to <code>confirmed</code> or <code>rejected</code>.</p>
-          </div>
         </section>
       </div>
     </div>
