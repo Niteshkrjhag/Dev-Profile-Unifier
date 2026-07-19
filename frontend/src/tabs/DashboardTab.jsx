@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function DashboardTab() {
   const [formData, setFormData] = useState({ 
@@ -78,6 +78,20 @@ export default function DashboardTab() {
     }
   };
 
+  useEffect(() => {
+    if (result?.type === 'disambiguation') {
+      const candidates = result.data.candidates || [];
+      const exactMatches = candidates.filter(c => c.match_score > 0);
+      if (exactMatches.length === 1) {
+        const match = exactMatches[0];
+        const timer = setTimeout(() => {
+          handleSelectCandidate(match.platform, match.handle);
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [result]);
+
   return (
     <div className="animate-fade-in">
       <div style={{ marginBottom: '32px' }}>
@@ -149,21 +163,55 @@ export default function DashboardTab() {
               
               <h3 style={{ marginTop: '24px' }}>Confirmed Links</h3>
               <ul style={{ marginTop: '12px', paddingLeft: '20px' }}>
-                {result.profile.entity_links.map((link, idx) => (
-                  <li key={idx} style={{ marginBottom: '8px' }}>
-                    <strong>{link.raw_profiles.platform}</strong> ({link.raw_profiles.handle}) - Confidence: {link.confidence_score}
-                  </li>
-                ))}
+                {result.profile.entity_links.map((link, idx) => {
+                  const plat = link.raw_profiles.platform;
+                  const handle = link.raw_profiles.handle;
+                  let url = '';
+                  if (plat === 'github') url = `https://github.com/${handle}`;
+                  if (plat === 'stackoverflow') url = `https://stackoverflow.com/users/${handle}`;
+                  if (plat === 'devto') url = `https://dev.to/${handle}`;
+                  if (plat === 'hackernews') url = `https://news.ycombinator.com/user?id=${handle}`;
+                  
+                  return (
+                    <li key={idx} style={{ marginBottom: '8px' }}>
+                      <strong style={{ textTransform: 'capitalize' }}>{plat}</strong>:{' '}
+                      {url ? (
+                        <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'underline' }}>
+                          {handle} ↗
+                        </a>
+                      ) : (
+                        <span>{handle}</span>
+                      )}
+                      <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>
+                        (Confidence: {link.confidence_score})
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
 
           {result?.type === 'disambiguation' && (
             <div className="glass-panel animate-fade-in" style={{ padding: '24px', border: '1px solid #FFCC00', display: 'flex', flexDirection: 'column', maxHeight: '850px' }}>
-              <h2>⚠️ Multiple Choices Detected</h2>
-              <p style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2>⚠️ Multiple Choices Detected</h2>
+                <button 
+                  onClick={() => setResult(null)} 
+                  style={{ background: 'transparent', border: '1px solid var(--danger-color)', color: 'var(--danger-color)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Cancel / Clear
+                </button>
+              </div>
+              <p style={{ marginBottom: '16px', marginTop: '8px' }}>
                 {result.data.message || 'Multiple profiles match this identity. Please select the correct one or review pending links in the Admin Tab.'}
               </p>
+              
+              {result.data.candidates.filter(c => c.match_score > 0).length === 1 && (
+                <div style={{ background: 'rgba(40,199,111,0.1)', border: '1px solid var(--success-color)', padding: '8px 12px', borderRadius: '6px', marginBottom: '16px', color: 'var(--success-color)', fontWeight: 600 }}>
+                  Exact Match found! Auto-selecting in 3 seconds...
+                </div>
+              )}
               <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
                 {result.data.candidates.map((c, i) => {
                 const profile = c.data?.profile || {};
