@@ -88,7 +88,7 @@ export default function DocsTab() {
               <strong>Phase 2 (Recursive Graph Crawler):</strong> Starting from the anchor profile, the system scans raw JSON (websites, bio links, blog URLs) using regex. If a cross-link is found (e.g., a Dev.to link on GitHub), we recursively fetch that new profile. This loop exhausts the deterministic graph.
             </div>
             <div style={{ background: 'var(--accent-color)', color: 'white', padding: '12px', borderRadius: '8px' }}>
-              <strong>Phase 3 (Gemini Tiebreaker):</strong> For any platforms still missing, we perform a fallback heuristic search. The raw JSON of the newly found profile is sent alongside our anchor profile to the LLM. Gemini analyzes signals like repo activity and writing style to score the match. Scores >0.85 are auto-merged; scores >0.50 are flagged for human audit.
+              <strong>Phase 3 (Gemini Tiebreaker):</strong> For any platforms still missing, we perform a fallback heuristic search. The raw JSON of the newly found profile is sent alongside our anchor profile to the LLM. Gemini analyzes signals like repo activity and writing style to score the match. Scores &gt;0.85 are auto-merged; scores &gt;0.50 are flagged for human audit.
             </div>
             <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
               <strong>Phase 4 (Executive Summary):</strong> Once all platforms are verified, the unified data payload is sent to Gemini one last time to generate a professional, cohesive summary of the developer's entire career and impact.
