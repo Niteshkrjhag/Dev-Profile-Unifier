@@ -5,7 +5,8 @@ export default function DashboardTab() {
     const saved = sessionStorage.getItem('effiflo_formData');
     return saved ? JSON.parse(saved) : { 
       name: '', github: '', stackoverflow: '', devto: '', hackernews: '',
-      location: '', workplace: '', gender: '', profession_status: '' 
+      location: '', workplace: '', gender: '', profession_status: '',
+      mode: 'transparent', depth: 'normal'
     };
   });
   const [loading, setLoading] = useState(false);
@@ -137,6 +138,40 @@ export default function DashboardTab() {
       <div style={{ display: 'flex', gap: '40px' }}>
         <div style={{ flex: 1, maxWidth: '450px' }}>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }}>
+              <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-color)', marginBottom: '8px' }}>ENGINE MODES</p>
+              
+              <div style={{ display: 'flex', gap: '16px', fontSize: '0.9rem', marginBottom: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="radio" name="mode" value="transparent" disabled={formData.depth === 'lighter'} checked={formData.mode === 'transparent'} onChange={(e) => setFormData({...formData, mode: e.target.value})} />
+                  Transparent (Manual Review)
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="radio" name="mode" value="autonomous" checked={formData.mode === 'autonomous'} onChange={(e) => setFormData({...formData, mode: e.target.value})} />
+                  Autonomous (AI Auto-Merge)
+                </label>
+              </div>
+
+              <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-color)', marginBottom: '8px', marginTop: '16px' }}>CRAWL DEPTH</p>
+              <div style={{ display: 'flex', gap: '16px', fontSize: '0.9rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="radio" name="depth" value="lighter" checked={formData.depth === 'lighter'} onChange={(e) => {
+                    // Force autonomous mode when lighter search is selected
+                    setFormData({...formData, depth: e.target.value, mode: 'autonomous'})
+                  }} />
+                  Lighter (1 Iter)
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="radio" name="depth" value="normal" checked={formData.depth === 'normal'} onChange={(e) => setFormData({...formData, depth: e.target.value})} />
+                  Normal (3 Iter)
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="radio" name="depth" value="deeper" checked={formData.depth === 'deeper'} onChange={(e) => setFormData({...formData, depth: e.target.value})} />
+                  Deeper (5 Iter)
+                </label>
+              </div>
+            </div>
+
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Full Name (Mandatory)</label>
               <input 
