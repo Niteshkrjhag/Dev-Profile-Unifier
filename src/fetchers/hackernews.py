@@ -1,5 +1,5 @@
 import httpx
-from typing import Dict, Any
+from typing import Dict, Any, List
 from src.core.base_fetcher import BaseFetcher
 
 class HackerNewsFetcher(BaseFetcher):
@@ -37,8 +37,8 @@ class HackerNewsFetcher(BaseFetcher):
 
         return data
 
-    async def search_by_name(self, name: str) -> Dict[str, Any]:
+    async def search_by_name(self, name: str) -> List[Dict[str, Any]]:
         """
         HN Algolia API doesn't support searching by real name reliably.
         """
-        return {}
+        return []

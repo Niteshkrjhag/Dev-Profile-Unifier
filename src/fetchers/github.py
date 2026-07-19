@@ -53,17 +53,22 @@ class GithubFetcher(BaseFetcher):
 
         return data
 
-    async def search_by_name(self, name: str) -> Dict[str, Any]:
+    async def search_by_name(self, name: str) -> List[Dict[str, Any]]:
         """
-        Asynchronously searches GitHub users by name or email. Returns the first strong match's full profile if found.
+        Asynchronously searches GitHub users by name or email. Returns top 5 candidates.
         """
         # Searching without exact quotes for broader matching
         query = f"{name} in:name"
+        candidates = []
         async with httpx.AsyncClient() as client:
-            res = await client.get(f"{self.base_url}/search/users?q={query}", headers=self.headers)
+            res = await client.get(f"{self.base_url}/search/users?q={query}&per_page=5", headers=self.headers)
             if res.status_code == 200:
                 items = res.json().get("items", [])
-                if items:
-                    best_match_handle = items[0].get("login")
-                    return await self.fetch_by_handle(best_match_handle)
-        return {}
+                for item in items[:5]:
+                    handle = item.get("login")
+                    if handle:
+                        # Fetch full profile for each candidate (to get bio, location, etc.)
+                        profile_data = await self.fetch_by_handle(handle)
+                        if profile_data:
+                            candidates.append(profile_data)
+        return candidates

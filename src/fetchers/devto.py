@@ -1,6 +1,6 @@
 import os
 import httpx
-from typing import Dict, Any
+from typing import Dict, Any, List
 from src.core.base_fetcher import BaseFetcher
 
 class DevToFetcher(BaseFetcher):
@@ -47,9 +47,9 @@ class DevToFetcher(BaseFetcher):
 
         return data
 
-    async def search_by_name(self, name: str) -> Dict[str, Any]:
+    async def search_by_name(self, name: str) -> List[Dict[str, Any]]:
         """
         Dev.to does not provide a robust name search API for users. 
         Will return empty. Cross-pollination or handle must be used.
         """
-        return {}
+        return []

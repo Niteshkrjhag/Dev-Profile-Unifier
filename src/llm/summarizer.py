@@ -16,13 +16,22 @@ class LLMService:
         # Use 2.5-flash since it was verified working in our connection test
         self.model_name = "gemini-2.5-flash"
 
-    def tiebreaker_resolution(self, profile1: dict, profile2: dict) -> Tuple[bool, float, str, int]:
+    def tiebreaker_resolution(self, profile1: dict, profile2: dict, user_metadata: dict = None) -> Tuple[bool, float, str, int]:
         """
         Uses Gemini to determine if two raw profiles belong to the same person.
         Returns: (is_match, confidence_score, reason, tokens_used)
         """
         if not self.client:
             return False, 0.0, "No API key configured", 0
+
+        metadata_instruction = ""
+        if user_metadata:
+            metadata_instruction = f"""
+            CRITICAL MATCHING CRITERIA:
+            The user is explicitly searching for a person with the following attributes: {json.dumps(user_metadata)}
+            If Profile 2's bio, location, company, or any other raw text strongly matches these exact attributes, 
+            you MUST weight this heavily as a positive match (confidence > 0.85).
+            """
 
         prompt = f"""
         Act as an expert Entity Resolution Agent for developer profiles.
@@ -33,9 +42,10 @@ class LLMService:
         - Tech stack overlaps
         - Writing style similarities
         - Shared open source repositories or companies
+        {metadata_instruction}
         
-        Profile 1: {json.dumps(profile1)}
-        Profile 2: {json.dumps(profile2)}
+        Profile 1 (Anchor): {json.dumps(profile1)}
+        Profile 2 (Candidate): {json.dumps(profile2)}
         
         Respond with a JSON object containing:
         - "is_match": true/false

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function AdminTab() {
   const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedRows, setExpandedRows] = useState(new Set());
 
   const fetchLinks = async () => {
     try {
@@ -29,12 +31,20 @@ export default function AdminTab() {
         body: JSON.stringify({ status })
       });
       if (res.ok) {
-        // Refresh list
         fetchLinks();
       }
     } catch (err) {
       alert("Failed to update status: " + err.message);
     }
+  };
+
+  const toggleRow = (id) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      return newSet;
+    });
   };
 
   if (loading) return <div>Loading admin audits...</div>;
@@ -53,30 +63,71 @@ export default function AdminTab() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {links.map((link) => (
-            <div key={`${link.canonical_id}-${link.raw_profile_id}`} className="glass-panel animate-fade-in" style={{ padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: link.status === 'rejected' ? 'var(--danger-color)' : '#FF9500', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    {link.status.replace('_', ' ')}
+          {links.map((link) => {
+            const rowId = `${link.canonical_id}-${link.raw_profile_id}`;
+            const isExpanded = expandedRows.has(rowId);
+            const isWarning = link.status !== 'rejected';
+            
+            return (
+              <div key={rowId} className="glass-panel animate-fade-in" style={{ 
+                padding: '24px', 
+                borderLeft: `4px solid ${isWarning ? '#FFCC00' : 'var(--danger-color)'}` 
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ 
+                      fontSize: '0.85rem', fontWeight: 700, 
+                      color: isWarning ? '#b38f00' : 'var(--danger-color)', 
+                      textTransform: 'uppercase', letterSpacing: '1px',
+                      background: isWarning ? 'rgba(255,204,0,0.2)' : 'rgba(255,59,48,0.1)',
+                      display: 'inline-block', padding: '2px 8px', borderRadius: '4px', marginBottom: '8px'
+                    }}>
+                      {link.status.replace('_', ' ')}
+                    </div>
+                    <h3 style={{ marginTop: '4px' }}>Target Entity: {link.canonical_entities.primary_name}</h3>
+                    <p style={{ color: 'var(--text-secondary)' }}>
+                      <strong>Platform:</strong> {link.raw_profiles.platform} &middot; <strong>Handle:</strong> {link.raw_profiles.handle}
+                    </p>
                   </div>
-                  <h3 style={{ marginTop: '8px' }}>Target Entity: {link.canonical_entities.primary_name}</h3>
-                  <p><strong>Platform:</strong> {link.raw_profiles.platform} &middot; <strong>Handle:</strong> {link.raw_profiles.handle}</p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn-success" onClick={() => handleUpdate(link.canonical_id, link.raw_profile_id, 'confirmed')}>Approve</button>
+                    {isWarning && (
+                      <button className="btn-danger" onClick={() => handleUpdate(link.canonical_id, link.raw_profile_id, 'rejected')}>Reject</button>
+                    )}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn-success" onClick={() => handleUpdate(link.canonical_id, link.raw_profile_id, 'confirmed')}>Approve</button>
-                  {link.status !== 'rejected' && (
-                    <button className="btn-danger" onClick={() => handleUpdate(link.canonical_id, link.raw_profile_id, 'rejected')}>Reject</button>
-                  )}
+                
+                <div style={{ marginTop: '16px', background: 'rgba(255,255,255,0.4)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                  <h4 style={{ marginBottom: '8px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>LLM Reasoning (Confidence: {link.confidence_score})</span>
+                  </h4>
+                  <p style={{ color: 'var(--text-primary)', fontSize: '0.95rem', lineHeight: '1.5' }}>{link.match_reason}</p>
                 </div>
+
+                <div 
+                  onClick={() => toggleRow(rowId)}
+                  style={{ marginTop: '16px', display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--accent-color)', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}
+                >
+                  {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  {isExpanded ? 'Hide Raw JSON Data' : 'View Raw JSON Data'}
+                </div>
+
+                {isExpanded && (
+                  <div className="animate-fade-in" style={{ 
+                    marginTop: '12px', 
+                    background: '#1e1e1e', 
+                    padding: '16px', 
+                    borderRadius: '8px',
+                    overflowX: 'auto'
+                  }}>
+                    <pre style={{ margin: 0, color: '#e6e6e6', fontSize: '0.85rem', fontFamily: 'monospace' }}>
+                      {JSON.stringify(link.raw_profiles.raw_data, null, 2)}
+                    </pre>
+                  </div>
+                )}
               </div>
-              
-              <div style={{ marginTop: '16px', background: 'rgba(0,0,0,0.03)', padding: '16px', borderRadius: '12px' }}>
-                <h4 style={{ marginBottom: '8px', color: 'var(--text-secondary)' }}>LLM Reasoning (Confidence: {link.confidence_score})</h4>
-                <p style={{ color: 'var(--text-primary)' }}>{link.match_reason}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

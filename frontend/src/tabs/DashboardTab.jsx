@@ -1,7 +1,10 @@
 import { useState } from 'react';
 
 export default function DashboardTab() {
-  const [formData, setFormData] = useState({ name: '', github: '', stackoverflow: '', devto: '', hackernews: '' });
+  const [formData, setFormData] = useState({ 
+    name: '', github: '', stackoverflow: '', devto: '', hackernews: '',
+    location: '', workplace: '', gender: '', profession_status: '' 
+  });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -48,12 +51,12 @@ export default function DashboardTab() {
   return (
     <div className="animate-fade-in">
       <div style={{ marginBottom: '32px' }}>
-        <h1>Profile Discovery</h1>
-        <p>Enter a developer's information to ingest, resolve, and unify their footprint.</p>
+        <h1>Advanced Profile Discovery</h1>
+        <p>Enter a developer's information and metadata to accurately resolve their identity.</p>
       </div>
 
       <div style={{ display: 'flex', gap: '40px' }}>
-        <div style={{ flex: 1, maxWidth: '400px' }}>
+        <div style={{ flex: 1, maxWidth: '450px' }}>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Full Name (Mandatory)</label>
@@ -65,6 +68,30 @@ export default function DashboardTab() {
               />
             </div>
             
+            <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '8px 0' }}></div>
+            <p style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>OPTIONAL METADATA</p>
+            
+            <input placeholder="Location (e.g. San Francisco)" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} />
+            <input placeholder="Workplace / Company" value={formData.workplace} onChange={(e) => setFormData({...formData, workplace: e.target.value})} />
+            
+            <select value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})} style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.5)', width: '100%' }}>
+              <option value="">Select Gender...</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+
+            <div style={{ display: 'flex', gap: '16px', fontSize: '0.9rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input type="radio" name="status" value="student" checked={formData.profession_status === 'student'} onChange={(e) => setFormData({...formData, profession_status: e.target.value})} />
+                Student
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input type="radio" name="status" value="professional" checked={formData.profession_status === 'professional'} onChange={(e) => setFormData({...formData, profession_status: e.target.value})} />
+                Working Professional
+              </label>
+            </div>
+
             <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '8px 0' }}></div>
             <p style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>OPTIONAL EXACT HANDLES</p>
             
@@ -104,11 +131,31 @@ export default function DashboardTab() {
           {result?.type === 'disambiguation' && (
             <div className="glass-panel animate-fade-in" style={{ padding: '24px', border: '1px solid #FFCC00' }}>
               <h2>⚠️ Multiple Choices Detected</h2>
-              <p style={{ marginBottom: '16px' }}>The LLM Engine was not highly confident (Score &lt; 0.85) about these profiles. Please manually review them in the Admin Tab.</p>
+              <p style={{ marginBottom: '16px' }}>
+                {result.data.message || 'Multiple profiles match this identity. Please select the correct one or review pending links in the Admin Tab.'}
+              </p>
               {result.data.candidates.map((c, i) => (
-                <div key={i} style={{ background: 'rgba(0,0,0,0.03)', padding: '12px', borderRadius: '8px', marginBottom: '8px' }}>
-                  <strong>{c.platform}:</strong> {c.handle} (Confidence: {c.confidence})
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{c.reason}</div>
+                <div key={i} style={{ 
+                  background: c.match_score > 0 ? 'rgba(40,199,111,0.1)' : 'rgba(0,0,0,0.03)', 
+                  border: c.match_score > 0 ? '1px solid var(--success-color)' : 'none',
+                  padding: '12px', 
+                  borderRadius: '8px', 
+                  marginBottom: '8px' 
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <strong>{c.platform}:</strong> {c.handle} 
+                      {c.confidence !== undefined && <span style={{marginLeft: '8px', fontSize: '0.9rem'}}>(Confidence: {c.confidence})</span>}
+                    </div>
+                    {c.match_score > 0 && (
+                      <span style={{ background: 'var(--success-color)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600 }}>
+                        Metadata Match!
+                      </span>
+                    )}
+                  </div>
+                  {c.reason && <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{c.reason}</div>}
+                  {c.data?.name && <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>Name on profile: {c.data.name}</div>}
+                  {c.data?.location && <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>Location: {c.data.location}</div>}
                 </div>
               ))}
             </div>

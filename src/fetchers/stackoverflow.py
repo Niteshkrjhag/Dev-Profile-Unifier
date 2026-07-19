@@ -1,6 +1,6 @@
 import os
 import httpx
-from typing import Dict, Any
+from typing import Dict, Any, List
 from src.core.base_fetcher import BaseFetcher
 
 class StackOverflowFetcher(BaseFetcher):
@@ -58,9 +58,9 @@ class StackOverflowFetcher(BaseFetcher):
 
         return data
 
-    async def _search_for_user_id(self, display_name: str) -> str:
+    async def _search_for_user_ids(self, display_name: str) -> List[str]:
         """
-        Asynchronously searches for a user by their exact or partial display name and returns the highest reputation user_id.
+        Asynchronously searches for users by their exact or partial display name and returns the top 5 highest reputation user_ids.
         """
         params = {
             "site": self.site,
@@ -75,16 +75,17 @@ class StackOverflowFetcher(BaseFetcher):
             res = await client.get(f"{self.base_url}/users", params=params)
             if res.status_code == 200:
                 items = res.json().get("items", [])
-                if items:
-                    # Return the user ID of the highest reputation match
-                    return str(items[0]["account_id"])
-        return ""
+                return [str(item["user_id"]) for item in items[:5]]
+        return []
 
-    async def search_by_name(self, name: str) -> Dict[str, Any]:
+    async def search_by_name(self, name: str) -> List[Dict[str, Any]]:
         """
-        Asynchronously searches for a profile by name.
+        Asynchronously searches for a profile by name. Returns top 5 candidates.
         """
-        user_id = await self._search_for_user_id(name)
-        if user_id:
-            return await self.fetch_by_handle(user_id)
-        return {}
+        user_ids = await self._search_for_user_ids(name)
+        candidates = []
+        for user_id in user_ids:
+            profile_data = await self.fetch_by_handle(user_id)
+            if profile_data:
+                candidates.append(profile_data)
+        return candidates

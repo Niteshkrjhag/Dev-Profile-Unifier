@@ -23,6 +23,15 @@ class SupabaseDB:
         response = self.client.table("raw_profiles").upsert(data, on_conflict="platform,handle").execute()
         return response.data[0]["id"]
 
+    def get_raw_profile(self, platform: str, handle: str) -> dict:
+        """
+        Fetches the raw profile data if it already exists in the database.
+        """
+        res = self.client.table("raw_profiles").select("raw_data").eq("platform", platform).eq("handle", handle).execute()
+        if res.data and len(res.data) > 0:
+            return res.data[0]["raw_data"]
+        return None
+
     def create_canonical_entity(self, primary_name: str, llm_summary: str = None) -> str:
         """
         Creates a new canonical person entity.
@@ -68,6 +77,23 @@ class SupabaseDB:
         if not res.data:
             return None
         return res.data[0]
+
+    def find_canonical_by_handle(self, platform: str, handle: str) -> str:
+        """
+        Phase 0 Cache Check: Checks if a raw profile handle is already linked to a canonical entity with 'confirmed' status.
+        """
+        res = self.client.table("raw_profiles") \
+            .select("id, entity_links!inner(canonical_id)") \
+            .eq("platform", platform) \
+            .eq("handle", handle) \
+            .eq("entity_links.status", "confirmed") \
+            .execute()
+            
+        if res.data and len(res.data) > 0:
+            links = res.data[0].get("entity_links", [])
+            if links:
+                return links[0]["canonical_id"]
+        return None
 
     def get_review_links(self) -> list:
         """

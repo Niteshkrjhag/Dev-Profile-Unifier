@@ -29,6 +29,10 @@ class ResolveRequest(BaseModel):
     stackoverflow: Optional[str] = None
     devto: Optional[str] = None
     hackernews: Optional[str] = None
+    location: Optional[str] = None
+    workplace: Optional[str] = None
+    gender: Optional[str] = None
+    profession_status: Optional[str] = None
 
 @app.get("/health")
 async def health_check():
@@ -57,7 +61,16 @@ async def resolve_profile(payload: ResolveRequest):
     # Clean None values
     handles = {k: v for k, v in handles.items() if v}
     
-    result = await resolver.resolve_and_store(payload.name, handles)
+    # Package metadata for bio-matching
+    user_metadata = {
+        "location": payload.location,
+        "workplace": payload.workplace,
+        "gender": payload.gender,
+        "profession_status": payload.profession_status
+    }
+    user_metadata = {k: v for k, v in user_metadata.items() if v}
+    
+    result = await resolver.resolve_and_store(payload.name, handles, user_metadata)
     
     if result["status"] == "multiple_choices":
         # Simulate an HTTP 300 Multiple Choices response pattern per Approach 2
