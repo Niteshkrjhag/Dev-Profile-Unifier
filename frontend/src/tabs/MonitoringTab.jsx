@@ -55,7 +55,7 @@ export default function MonitoringTab() {
 
         {/* LLM Usage Widget */}
         <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', marginBottom: '16px' }}>Gemini Inference (2.5 Flash)</h3>
+          <h3 style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', marginBottom: '16px' }}>Gemini Inference (3.5 Flash)</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <div style={{ fontSize: '2.5rem', fontWeight: '300', color: 'var(--text-primary)' }}>{metrics.llm.total_tokens_used.toLocaleString()}</div>

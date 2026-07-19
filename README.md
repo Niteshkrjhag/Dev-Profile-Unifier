@@ -27,7 +27,7 @@ Once a candidate handle is selected (or provided initially), the high-performanc
 - If it discovers a link to another platform (e.g., finding a Dev.to URL on their GitHub), it adds it to the queue. 
 - This recursively loops up to 3 times to mathematically exhaust the developer's connected graph.
 
-### Phase 3: LLM Tie-Breaker (Gemini 2.5)
+### Phase 3: LLM Tie-Breaker (Gemini 3.5)
 For any platforms still missing after the deterministic graph crawl, a fallback heuristic search is performed. The raw JSON of the newly found profile is sent alongside the "Anchor" profile to Gemini.
 Gemini acts as an expert semantic judge, analyzing nuanced signals like language frequencies, tech stacks, and writing styles.
 - **`> 0.85 Confidence:`** Auto-Merges the identity into the canonical database.

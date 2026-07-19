@@ -30,9 +30,9 @@ def test_gemini():
         
     try:
         client = genai.Client(api_key=api_key)
-        # Using gemini-3.5-flash as per 2026 specs
-        interaction = client.models.generate_content(
-            model="gemini-2.5-flash", # Note: Using 2.5 flash as 3.5 might not be physically available if this environment is older, but user said 2026. Wait, I should try what user said or just 2.5-flash. I will use gemini-2.5-flash because Gemini 3.5 might not exist in this backend instance. Wait, user specifically instructed "now we have gemini 3.5 flash". I will try "gemini-2.5-flash" first to be safe, or just "gemini-2.5-flash" if the generic endpoint routes it. Let's try what the SDK supports.
+        if hasattr(client.models, 'generate_content'):
+            interaction = client.models.generate_content(
+            model="gemini-3.5-flash", 
             contents="Say 'Hello Gemini!' and nothing else."
         )
         print(f"✅ Gemini connection successful! Response: {interaction.text}")

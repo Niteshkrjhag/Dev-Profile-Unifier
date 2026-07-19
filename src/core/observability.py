@@ -49,7 +49,7 @@ class ObservabilityTracker:
 
     def record_llm_usage(self, tokens: int):
         self.metrics["llm"]["total_tokens_used"] += tokens
-        # Gemini Flash 2.5/3.5 pricing (approx $0.075 per 1M tokens)
+        # Gemini 3.5 Flash pricing (approx $0.075 per 1M tokens)
         self.metrics["llm"]["estimated_cost_usd"] = (self.metrics["llm"]["total_tokens_used"] / 1_000_000) * 0.075
 
     def record_resolution_time(self, time_ms: float):

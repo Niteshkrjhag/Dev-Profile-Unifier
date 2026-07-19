@@ -13,8 +13,8 @@ class LLMService:
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY")
         self.client = genai.Client(api_key=self.api_key) if self.api_key else None
-        # Use 2.5-flash since it was verified working in our connection test
-        self.model_name = "gemini-2.5-flash"
+        # Use 3.5-flash as per environment specs
+        self.model_name = "gemini-3.5-flash"
 
     def tiebreaker_resolution(self, profile1: dict, profile2: dict, user_metadata: dict = None) -> Tuple[bool, float, str, int]:
         """
