@@ -224,9 +224,10 @@ class ProfileResolver:
         for platform, data in fetched_profiles.items():
             raw_ids[platform] = await asyncio.to_thread(self.db.insert_raw_profile, platform, data.get("handle", "unknown"), data)
 
+        base_platform = list(fetched_profiles.keys())[0]
+
         # Create Canonical Entity Container if it doesn't already exist
         if not canonical_id:
-            base_platform = list(fetched_profiles.keys())[0]
             # Try to extract a real name from the platform's profile data
             extracted_name = fetched_profiles[base_platform].get("profile", {}).get("name")
             canonical_name = name or extracted_name or fetched_profiles[base_platform].get("handle", "Unknown User")

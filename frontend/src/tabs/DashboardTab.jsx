@@ -12,7 +12,7 @@ const LoadingPhases = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setActivePhase(prev => (prev < 4 ? prev + 1 : prev));
+      setActivePhase(prev => (prev < 3 ? prev + 1 : prev));
     }, 1500);
     return () => clearInterval(interval);
   }, []);
