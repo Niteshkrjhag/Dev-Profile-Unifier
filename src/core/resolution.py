@@ -237,6 +237,7 @@ class ProfileResolver:
         for platform, raw_id in raw_ids.items():
             reason = "explicit_handle" if platform in handles else "graph_traversal_extraction"
             await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, 1.0, reason, "confirmed")
+            await asyncio.to_thread(self.db.reject_other_links_for_platform, canonical_id, platform, raw_id)
 
         # Phase 3: LLM Tiebreaker (Heuristic Fallback)
         ambiguous_matches = []
@@ -269,6 +270,7 @@ class ProfileResolver:
                         
                     if mode == 'autonomous' and conf >= 0.85:
                         await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, conf, reason_text, "confirmed")
+                        await asyncio.to_thread(self.db.reject_other_links_for_platform, canonical_id, platform, raw_id)
                         fetched_profiles[platform] = candidate_data
                         break # Stop checking other candidates for this platform
                     else:

@@ -121,6 +121,27 @@ class SupabaseDB:
             .eq("canonical_id", canonical_id) \
             .eq("raw_profile_id", raw_profile_id) \
             .execute()
+            
+        if new_status == "confirmed":
+            res = self.client.table("raw_profiles").select("platform").eq("id", raw_profile_id).execute()
+            if res.data:
+                platform = res.data[0]["platform"]
+                self.reject_other_links_for_platform(canonical_id, platform, raw_profile_id)
+
+    def reject_other_links_for_platform(self, canonical_id: str, platform: str, confirmed_raw_id: str):
+        """
+        When a specific profile is confirmed, reject all other pending/ambiguous links 
+        for that same platform on the canonical ID.
+        """
+        res = self.client.table("entity_links").select("raw_profile_id, status, raw_profiles(platform)").eq("canonical_id", canonical_id).execute()
+        if res.data:
+            for link in res.data:
+                rp_id = link["raw_profile_id"]
+                # If it's a different profile, and it belongs to the same platform, and it's not already rejected
+                if rp_id != confirmed_raw_id and link.get("status") != "rejected":
+                    raw_prof = link.get("raw_profiles")
+                    if raw_prof and raw_prof.get("platform") == platform:
+                        self.client.table("entity_links").update({"status": "rejected"}).eq("canonical_id", canonical_id).eq("raw_profile_id", rp_id).execute()
 
     def get_search_cache(self, query_hash: str) -> list:
         """
