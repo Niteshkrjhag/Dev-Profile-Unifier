@@ -2,6 +2,7 @@ import os
 import httpx
 from typing import Dict, Any, List
 from src.core.base_fetcher import BaseFetcher
+from src.core.observability import tracker
 
 class DevToFetcher(BaseFetcher):
     def __init__(self):
@@ -18,6 +19,7 @@ class DevToFetcher(BaseFetcher):
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 # 1. Fetch Profile
+                tracker.record_api_call("devto")
                 profile_res = await client.get(f"{self.base_url}/users/by_username?url={handle}", headers=self.headers)
                 if profile_res.status_code == 429 or profile_res.status_code == 403:
                     raise Exception(f"Dev.to API Rate Limited ({profile_res.status_code}).")
@@ -27,6 +29,7 @@ class DevToFetcher(BaseFetcher):
                     return {} # User not found
                     
                 # 2. Fetch Articles
+                tracker.record_api_call("devto")
                 articles_res = await client.get(f"{self.base_url}/articles?username={handle}&per_page=30", headers=self.headers)
                 if articles_res.status_code == 200:
                     articles = articles_res.json()

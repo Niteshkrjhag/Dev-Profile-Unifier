@@ -3,12 +3,16 @@ import httpx
 import asyncio
 from typing import Dict, Any, List
 from src.core.base_fetcher import BaseFetcher
+from src.core.observability import tracker
 
 class StackOverflowFetcher(BaseFetcher):
     def __init__(self):
         self.key = os.getenv('STACK_EXCHANGE_KEY')
         self.base_url = "https://api.stackexchange.com/2.3"
         self.site = "stackoverflow"
+
+    def _track_response(self):
+        tracker.record_api_call("stackoverflow")
 
     async def fetch_by_handle(self, handle: str) -> Dict[str, Any]:
         """
@@ -32,6 +36,7 @@ class StackOverflowFetcher(BaseFetcher):
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 # 2. Fetch Profile
+                self._track_response()
                 profile_res = await client.get(f"{self.base_url}/users/{user_id}", params=params)
                 
                 # Check for backoff or rate limit
@@ -46,6 +51,7 @@ class StackOverflowFetcher(BaseFetcher):
                     return {}
 
                 # 3. Fetch Top Tags
+                self._track_response()
                 tags_res = await client.get(f"{self.base_url}/users/{user_id}/top-tags", params=params)
                 if tags_res.status_code == 200:
                     tags = tags_res.json().get("items", [])
@@ -54,12 +60,14 @@ class StackOverflowFetcher(BaseFetcher):
                 # 4. Fetch Top Answers
                 answers_params = params.copy()
                 answers_params.update({"order": "desc", "sort": "votes"})
+                self._track_response()
                 answers_res = await client.get(f"{self.base_url}/users/{user_id}/answers", params=answers_params)
                 if answers_res.status_code == 200:
                     answers = answers_res.json().get("items", [])
                     data["top_answers"] = [{"score": a["score"], "is_accepted": a["is_accepted"], "question_id": a["question_id"]} for a in answers[:5]]
                     
                 # 5. Fetch Top Questions
+                self._track_response()
                 questions_res = await client.get(f"{self.base_url}/users/{user_id}/questions", params=answers_params)
                 if questions_res.status_code == 200:
                     questions = questions_res.json().get("items", [])
@@ -84,6 +92,7 @@ class StackOverflowFetcher(BaseFetcher):
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
+                self._track_response()
                 res = await client.get(f"{self.base_url}/users", params=params)
                 if res.status_code == 400 and "backoff" in res.text:
                     raise Exception("StackExchange API Rate Limit (Backoff) reached.")
@@ -104,10 +113,13 @@ class StackOverflowFetcher(BaseFetcher):
         if not user_ids:
             return []
             
-        # StackExchange has a strict 30 requests/sec limit.
-        # Fetching 30 users concurrently does 120 API requests simultaneously, which causes silent rate-limit drops.
-        # We cap it to the top 5 candidates.
-        tasks = [self.fetch_by_handle(uid) for uid in user_ids[:5]]
+        sem = asyncio.Semaphore(5)
+        
+        async def fetch_with_sem(uid):
+            async with sem:
+                return await self.fetch_by_handle(uid)
+                
+        tasks = [fetch_with_sem(uid) for uid in user_ids]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         candidates = []

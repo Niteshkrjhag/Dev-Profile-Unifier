@@ -1,6 +1,7 @@
 import httpx
 from typing import Dict, Any, List
 from src.core.base_fetcher import BaseFetcher
+from src.core.observability import tracker
 
 class HackerNewsFetcher(BaseFetcher):
     def __init__(self):
@@ -15,6 +16,7 @@ class HackerNewsFetcher(BaseFetcher):
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 # Algolia provides a single endpoint for items authored by a user
+                tracker.record_api_call("hackernews")
                 res = await client.get(f"{self.base_url}/search_by_date?tags=author_{handle}&hitsPerPage=20")
                 if res.status_code == 429 or res.status_code == 403:
                     raise Exception(f"HackerNews API Rate Limited ({res.status_code}).")

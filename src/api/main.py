@@ -109,13 +109,17 @@ async def resolve_profile(payload: ResolveRequest):
             "status": "multiple_choices",
             "message": result["message"],
             "canonical_id": result["canonical_id"],
-            "candidates": result.get("candidates", result.get("ambiguous_matches", []))
+            "candidates": result.get("candidates", result.get("ambiguous_matches", [])),
+            "warnings": result.get("warnings", [])
         }
         
     if result["status"] == "error":
         raise HTTPException(status_code=404, detail=result["message"])
 
-    return {"canonical_id": result["canonical_id"]}
+    return {
+        "canonical_id": result["canonical_id"],
+        "warnings": result.get("warnings", [])
+    }
 
 @app.get("/profiles/{profile_id}")
 async def get_profile(profile_id: str):

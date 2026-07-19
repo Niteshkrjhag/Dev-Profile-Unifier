@@ -18,7 +18,7 @@ class DiscoveryEngine:
                 continue
 
             # Stack Overflow: https://stackoverflow.com/users/13666482/nitesh-kr-jha
-            so_match = re.search(r"stackoverflow\.com/users/\d+/([^/]+)", link)
+            so_match = re.search(r"stackoverflow\.com/users/(\d+)", link)
             if so_match:
                 discovered["stackoverflow"] = so_match.group(1)
 

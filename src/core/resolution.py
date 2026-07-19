@@ -57,6 +57,7 @@ class ProfileResolver:
         
         fetched_profiles = {}
         canonical_id = None
+        resolution_warnings = []
 
         if not handles:
             handles = {}
@@ -96,9 +97,13 @@ class ProfileResolver:
                 self.fetchers["github"].search_by_name(name),
                 self.fetchers["stackoverflow"].search_by_name(name),
                 self.fetchers["devto"].search_by_name(name),
-                self.fetchers["hackernews"].search_by_name(name)
+                self.fetchers["hackernews"].search_by_name(name),
+                return_exceptions=True
             )
             for platform_name, plat_res in zip(["github", "stackoverflow", "devto", "hackernews"], results):
+                if isinstance(plat_res, Exception):
+                    resolution_warnings.append(f"{platform_name} Phase 1a failed: {str(plat_res)}")
+                    continue
                 for c in plat_res:
                     match_score = 0
                     if user_metadata:
@@ -167,9 +172,12 @@ class ProfileResolver:
             if not tasks:
                 break # No new platforms to fetch
                 
-            results = await asyncio.gather(*tasks)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
             
             for platform, data in zip(platforms_to_fetch, results):
+                if isinstance(data, Exception):
+                    resolution_warnings.append(f"{platform} Phase 2 failed: {str(data)}")
+                    continue
                 if data:
                     fetched_profiles[platform] = data
                     extracted = self._extract_handles_from_metadata(data)
@@ -206,11 +214,14 @@ class ProfileResolver:
         missing_platforms = [p for p in ["github", "stackoverflow", "devto", "hackernews"] if p not in fetched_profiles]
         if missing_platforms and name:
             fallback_tasks = [self.fetchers[p].search_by_name(name) for p in missing_platforms]
-            fallback_results = await asyncio.gather(*fallback_tasks)
+            fallback_results = await asyncio.gather(*fallback_tasks, return_exceptions=True)
             
             base_data = fetched_profiles[base_platform]
             
             for platform, candidates in zip(missing_platforms, fallback_results):
+                if isinstance(candidates, Exception):
+                    resolution_warnings.append(f"{platform} Phase 3b failed: {str(candidates)}")
+                    continue
                 for candidate_data in candidates:
                     cand_handle = candidate_data.get("handle", "unknown")
                     raw_id = self.db.insert_raw_profile(platform, cand_handle, candidate_data)
@@ -255,10 +266,12 @@ class ProfileResolver:
                 "status": "multiple_choices",
                 "canonical_id": canonical_id,
                 "message": f"Graph traversal succeeded, but we found {len(ambiguous_matches)} potential matches via LLM Fallback Search. Please review and manually select one.",
-                "ambiguous_matches": ambiguous_matches
+                "ambiguous_matches": ambiguous_matches,
+                "warnings": resolution_warnings
             }
 
         return {
             "status": "success",
-            "canonical_id": canonical_id
+            "canonical_id": canonical_id,
+            "warnings": resolution_warnings
         }

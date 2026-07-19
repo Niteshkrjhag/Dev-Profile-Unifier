@@ -14,7 +14,7 @@ class ProfileCollector:
             "hackernews": HackerNewsFetcher()
         }
 
-    def collect(self, 
+    async def collect(self, 
                 name: str = None, 
                 generic_handle: str = None, 
                 email: str = None,
@@ -50,24 +50,24 @@ class ProfileCollector:
         # Fallback to name search for GitHub if no handles/email are provided
         # (Email logic can be added directly to GithubFetcher if needed, keeping it simple for now)
         if not targets["github"] and name:
-            gh_data = self.fetchers["github"].search_by_name(name)
-            if gh_data:
-                results["data"]["github"] = gh_data
-                targets["github"] = gh_data.get("handle") # Lock in the found handle
+            gh_data = await self.fetchers["github"].search_by_name(name)
+            if gh_data and isinstance(gh_data, list):
+                results["data"]["github"] = gh_data[0]
+                targets["github"] = gh_data[0].get("handle") # Lock in the found handle
         elif targets["github"]:
-            results["data"]["github"] = self.fetchers["github"].fetch_by_handle(targets["github"])
+            results["data"]["github"] = await self.fetchers["github"].fetch_by_handle(targets["github"])
 
         # Stack Overflow exhaustive search
         if targets["stackoverflow"]:
-            results["data"]["stackoverflow"] = self.fetchers["stackoverflow"].fetch_by_handle(targets["stackoverflow"])
+            results["data"]["stackoverflow"] = await self.fetchers["stackoverflow"].fetch_by_handle(targets["stackoverflow"])
 
         # Dev.to
         if targets["devto"]:
-            results["data"]["devto"] = self.fetchers["devto"].fetch_by_handle(targets["devto"])
+            results["data"]["devto"] = await self.fetchers["devto"].fetch_by_handle(targets["devto"])
 
         # Hacker News
         if targets["hackernews"]:
-            results["data"]["hackernews"] = self.fetchers["hackernews"].fetch_by_handle(targets["hackernews"])
+            results["data"]["hackernews"] = await self.fetchers["hackernews"].fetch_by_handle(targets["hackernews"])
 
         # Step 2: Cross-Pollination Discovery
         # Scan the results we just gathered to find links to other platforms
@@ -78,6 +78,6 @@ class ProfileCollector:
         for platform, disc_handle in discovered.items():
             if not targets.get(platform):
                 # We found a handle for a platform we didn't search yet!
-                results["data"][platform] = self.fetchers[platform].fetch_by_handle(disc_handle)
+                results["data"][platform] = await self.fetchers[platform].fetch_by_handle(disc_handle)
 
         return results

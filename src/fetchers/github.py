@@ -3,12 +3,21 @@ import httpx
 import asyncio
 from typing import Dict, Any, List
 from src.core.base_fetcher import BaseFetcher
+from src.core.observability import tracker
 
 class GithubFetcher(BaseFetcher):
     def __init__(self):
         self.token = os.getenv('GITHUB_TOKEN')
         self.headers = {"Authorization": f"token {self.token}"} if self.token else {}
         self.base_url = "https://api.github.com"
+
+    def _track_response(self, res):
+        tracker.record_api_call("github")
+        tracker.update_github_rate_limit(
+            res.headers.get("X-RateLimit-Remaining"),
+            res.headers.get("X-RateLimit-Limit"),
+            res.headers.get("X-RateLimit-Reset")
+        )
 
     async def fetch_by_handle(self, handle: str) -> Dict[str, Any]:
         """
@@ -20,6 +29,7 @@ class GithubFetcher(BaseFetcher):
             async with httpx.AsyncClient(timeout=10.0) as client:
                 # 1. Fetch Profile
                 res = await client.get(f"{self.base_url}/users/{handle}", headers=self.headers)
+                self._track_response(res)
                 if res.status_code == 403:
                     raise Exception("GitHub API Rate Limited (403). Please wait or use an authenticated token.")
                 if res.status_code != 200:
@@ -29,6 +39,7 @@ class GithubFetcher(BaseFetcher):
                 
                 # 2. Fetch Repos (for languages and tech stack inference)
                 repos_res = await client.get(f"{self.base_url}/users/{handle}/repos?sort=updated&per_page=30", headers=self.headers)
+                self._track_response(repos_res)
                 if repos_res.status_code == 200:
                     repos = repos_res.json()
                     lang_counts = {}
@@ -40,6 +51,7 @@ class GithubFetcher(BaseFetcher):
                 
                 # 3. Fetch Recent Activity (Events)
                 events_res = await client.get(f"{self.base_url}/users/{handle}/events/public?per_page=30", headers=self.headers)
+                self._track_response(events_res)
                 if events_res.status_code == 200:
                     events = events_res.json()
                     activities = []
@@ -64,9 +76,16 @@ class GithubFetcher(BaseFetcher):
         Asynchronously searches GitHub users by name or email. Returns all fetched candidates concurrently.
         """
         query = f"{name} in:name"
+        sem = asyncio.Semaphore(5)
+        
+        async def fetch_with_sem(handle):
+            async with sem:
+                return await self.fetch_by_handle(handle)
+
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 res = await client.get(f"{self.base_url}/search/users?q={query}", headers=self.headers)
+                self._track_response(res)
                 if res.status_code == 403:
                     raise Exception("GitHub API Rate Limited (403).")
                 if res.status_code == 200:
@@ -75,12 +94,12 @@ class GithubFetcher(BaseFetcher):
                     for item in items:
                         handle = item.get("login")
                         if handle:
-                            tasks.append(self.fetch_by_handle(handle))
+                            tasks.append(fetch_with_sem(handle))
                     
                     if not tasks:
                         return []
                         
-                    # Fetch all profiles concurrently
+                    # Fetch all profiles concurrently but safely bounded by Semaphore
                     results = await asyncio.gather(*tasks, return_exceptions=True)
                     
                     candidates = []
