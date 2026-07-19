@@ -1,5 +1,70 @@
 import { useState, useEffect } from 'react';
 
+const LoadingPhases = () => {
+  const [activePhase, setActivePhase] = useState(0);
+  const phases = [
+    { name: "Phase 0: Database Caching", desc: "Checking high-speed cache..." },
+    { name: "Phase 1: Disambiguation", desc: "Hashing query & ranking candidates..." },
+    { name: "Phase 2: Graph Crawler", desc: "Recursively traversing cross-platform links..." },
+    { name: "Phase 3: LLM Tiebreaker", desc: "Analyzing semantics with Gemini 3.5..." },
+    { name: "Phase 4: Executive Summary", desc: "Generating unified identity profile..." }
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActivePhase(prev => (prev < 4 ? prev + 1 : prev));
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="glass-panel animate-fade-in" style={{ padding: '32px' }}>
+      <h2 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ width: '24px', height: '24px', border: '3px solid var(--accent-color)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        Unifying Identity...
+      </h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {phases.map((p, idx) => {
+          const isActive = activePhase === idx;
+          const isDone = activePhase > idx;
+          return (
+            <div key={idx} style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '16px',
+              opacity: isActive || isDone ? 1 : 0.4,
+              transform: isActive ? 'scale(1.02)' : 'scale(1)',
+              transition: 'all 0.3s ease',
+              padding: '12px 16px',
+              background: isActive ? 'rgba(0,113,227,0.1)' : isDone ? 'rgba(52,199,89,0.05)' : 'transparent',
+              border: isActive ? '1px solid var(--accent-color)' : isDone ? '1px solid var(--success-color)' : '1px solid rgba(0,0,0,0.05)',
+              borderRadius: '12px'
+            }}>
+              <div style={{ 
+                width: '32px', height: '32px', borderRadius: '50%', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                background: isActive ? 'var(--accent-color)' : isDone ? 'var(--success-color)' : '#eee',
+                color: isActive || isDone ? 'white' : '#999',
+                fontWeight: 'bold',
+                boxShadow: isActive ? '0 0 15px rgba(0,113,227,0.5)' : 'none'
+              }}>
+                {isDone ? '✓' : idx}
+              </div>
+              <div>
+                <strong style={{ display: 'block', color: isActive ? 'var(--accent-color)' : isDone ? 'var(--success-color)' : 'var(--text-primary)' }}>{p.name}</strong>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{p.desc}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <style>{`
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+      `}</style>
+    </div>
+  );
+};
+
 export default function DashboardTab() {
   const [formData, setFormData] = useState(() => {
     const saved = sessionStorage.getItem('effiflo_formData');
@@ -215,7 +280,9 @@ export default function DashboardTab() {
         </div>
 
         <div style={{ flex: 1 }}>
-          {result?.type === 'success' && result.profile && (
+          {loading && <LoadingPhases />}
+          
+          {!loading && result?.type === 'success' && result.profile && (
             <div className="glass-panel animate-fade-in" style={{ padding: '24px' }}>
               <h2>Unified Profile</h2>
               <div style={{ marginTop: '16px', background: 'rgba(0,0,0,0.03)', padding: '16px', borderRadius: '12px' }}>
@@ -254,7 +321,7 @@ export default function DashboardTab() {
             </div>
           )}
 
-          {result?.type === 'disambiguation' && (
+          {!loading && result?.type === 'disambiguation' && (
             <div className="glass-panel animate-fade-in" style={{ padding: '24px', border: '1px solid #FFCC00', display: 'flex', flexDirection: 'column', maxHeight: '850px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2>⚠️ Multiple Choices Detected</h2>
