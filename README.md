@@ -13,6 +13,42 @@ This system solves this using a **Tiered Deterministic-to-Heuristic Funnel**.
 
 When a client submits a request with a developer's name and optional metadata (location, workplace) or explicit handles, the system executes a 5-phase pipeline:
 
+```mermaid
+graph TD
+  A[Client Request] --> B{Handle Provided?}
+  
+  B -- Yes --> C[Phase 0: DB Cache Check]
+  
+  B -- No --> D1[Phase 1: Hash Metadata]
+  D1 --> D2{In Cache?}
+  D2 -- Yes --> E[Return Cached Choices]
+  D2 -- No --> D3[Fetch APIs & Rank]
+  D3 --> E
+  E --> F[User Selects Match]
+  F --> C
+  
+  C --> G{In DB?}
+  G -- Yes --> H[Return Profile]
+  G -- No --> I[Phase 2: Graph Crawler]
+  
+  I --> J[Fetch Profiles]
+  J --> K[Parse Bio Links]
+  K --> L{New Links?}
+  L -- Yes --> J
+  
+  L -- No --> M[Phase 3: Fallback Search]
+  M --> N{Missing?}
+  
+  N -- Yes --> O[Gemini Tiebreaker]
+  O -->|Score > 0.85| Q[Auto-Merge]
+  O -->|Score > 0.50| R[Pending Audit]
+  O -->|Score < 0.50| S[Rejected]
+  
+  N -- No --> T[Phase 4: LLM Summary]
+  Q --> T
+  T --> H
+```
+
 ### Phase 0: The Database Cache Check
 If the user provides an exact handle (e.g., `github="Niteshkrjhag"`), the engine bypasses all external network calls and checks the Supabase database. If the canonical profile was already resolved, it returns it instantly (< 50ms).
 
