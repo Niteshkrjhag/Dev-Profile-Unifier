@@ -27,36 +27,46 @@ function MermaidDiagram({ chart }) {
 
 export default function DocsTab() {
   const diagram = `
+    %%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#1e293b', 'edgeLabelBackground': '#334155'}}}%%
     graph TD
-      A[Client Request] --> B{Exact Handles Provided?}
-      B -- Yes --> C[Phase 0: DB Cache Check]
+      classDef default fill:#1e293b,stroke:#475569,stroke-width:2px,color:#f8fafc,rx:8px;
+      classDef start fill:#4f46e5,stroke:#c7d2fe,stroke-width:2px,color:#fff,rx:8px;
+      classDef phase0 fill:#059669,stroke:#6ee7b7,stroke-width:2px,color:#fff,rx:8px;
+      classDef phase1 fill:#d97706,stroke:#fcd34d,stroke-width:2px,color:#fff,rx:8px;
+      classDef phase2 fill:#2563eb,stroke:#93c5fd,stroke-width:2px,color:#fff,rx:8px;
+      classDef phase3 fill:#9333ea,stroke:#d8b4fe,stroke-width:2px,color:#fff,rx:8px;
+      classDef phase4 fill:#0891b2,stroke:#67e8f9,stroke-width:2px,color:#fff,rx:8px;
+      classDef decision fill:#be123c,stroke:#fda4af,stroke-width:2px,color:#fff;
       
-      B -- No --> D1[Phase 1: Hash Name & Metadata]
-      D1 --> D2{Exists in Cache?}
-      D2 -- Yes --> E[Return Cached Choices]
-      D2 -- No --> D3[Fetch APIs & Rank Matches]
+      A[🚀 Client Request]:::start --> B{Handle Provided?}:::decision
+      B -- Yes --> C[⚡ Phase 0: DB Cache Check]:::phase0
+      
+      B -- No --> D1[🔍 Phase 1: Hash Metadata]:::phase1
+      D1 --> D2{In Cache?}:::decision
+      D2 -- Yes --> E[📂 Return Cached Choices]:::phase1
+      D2 -- No --> D3[🌐 Fetch APIs & Rank]:::phase1
       D3 --> E
-      E --> F[User Selects Match]
+      E --> F[👤 User Selects Match]:::start
       F --> C
       
-      C --> G{Exists in DB?}
-      G -- Yes --> H[Return Instant Profile]
-      G -- No --> I[Phase 2: Graph Crawler]
+      C --> G{In DB?}:::decision
+      G -- Yes --> H[✅ Return Profile]:::start
+      G -- No --> I[🕷️ Phase 2: Graph Crawler]:::phase2
       
-      I --> J[Fetch Profiles]
-      J --> K[Parse Bio for Links]
-      K --> L{New Links?}
+      I --> J[📥 Fetch Profiles]:::phase2
+      J --> K[🧬 Parse Bio Links]:::phase2
+      K --> L{New Links?}:::decision
       L -- Yes --> J
       
-      L -- No --> M[Phase 3: Fallback Search]
-      M --> N{Missing Platforms?}
+      L -- No --> M[🚨 Phase 3: Fallback Search]:::phase3
+      M --> N{Missing?}:::decision
       
-      N -- Yes --> O[Gemini Tiebreaker]
-      O -->|> 0.85| Q[Auto-Merge]
-      O -->|> 0.50| R[Pending Audit]
-      O -->|< 0.50| S[Rejected]
+      N -- Yes --> O[🤖 Gemini Tiebreaker]:::phase3
+      O -- "Score > 0.85" --> Q[✨ Auto-Merge]:::phase3
+      O -- "Score > 0.50" --> R[👀 Pending Audit]:::phase3
+      O -- "Score < 0.50" --> S[❌ Rejected]:::phase3
       
-      N -- No --> T[Phase 4: LLM Summary]
+      N -- No --> T[📝 Phase 4: LLM Summary]:::phase4
       Q --> T
       T --> H
   `;
