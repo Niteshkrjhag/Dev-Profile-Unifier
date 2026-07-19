@@ -64,7 +64,11 @@ class LLMService:
                 )
             )
             
-            result = json.loads(response.text)
+            # Clean potential markdown formatting (```json ... ```)
+            import re
+            cleaned_text = re.sub(r"```json\s*", "", response.text)
+            cleaned_text = re.sub(r"```\s*$", "", cleaned_text).strip()
+            result = json.loads(cleaned_text)
             
             # Extract tokens if available (google-genai metadata varies, this is a safe approach)
             tokens = 0

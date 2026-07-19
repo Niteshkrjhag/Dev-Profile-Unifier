@@ -140,7 +140,8 @@ class ProfileResolver:
             
             for platform, handle in current_handles.items():
                 if platform not in fetched_profiles:
-                    cached_data = self.db.get_raw_profile(platform, handle)
+                    # Fix Flaw B: Synchronous DB call in async loop
+                    cached_data = await asyncio.to_thread(self.db.get_raw_profile, platform, handle)
                     if cached_data:
                         async def return_cached(data): return data
                         tasks.append(return_cached(cached_data))

@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict
+import asyncio
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,10 +12,28 @@ from src.core.observability import tracker
 from src.core.resolution import ProfileResolver
 from src.core.supabase_client import SupabaseDB
 
+async def cache_cleanup_task():
+    db = SupabaseDB()
+    while True:
+        try:
+            db.cleanup_old_search_cache(days=3)
+            print("Cron: Cleaned up search cache older than 3 days.")
+        except Exception as e:
+            print(f"Cron: Cache cleanup failed: {e}")
+        # Sleep for 12 hours
+        await asyncio.sleep(12 * 3600)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(cache_cleanup_task())
+    yield
+    task.cancel()
+
 app = FastAPI(
     title="Effiflo Dev Profile Unifier",
     description="Unified developer profiles from GitHub, StackOverflow, Dev.to, and HackerNews.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -70,7 +90,10 @@ async def resolve_profile(payload: ResolveRequest):
     }
     user_metadata = {k: v for k, v in user_metadata.items() if v}
     
-    result = await resolver.resolve_and_store(payload.name, handles, user_metadata)
+    try:
+        result = await resolver.resolve_and_store(payload.name, handles, user_metadata)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"External API Error: {str(e)}")
     
     if result["status"] == "multiple_choices":
         # Simulate an HTTP 300 Multiple Choices response pattern per Approach 2
@@ -78,7 +101,7 @@ async def resolve_profile(payload: ResolveRequest):
             "status": "multiple_choices",
             "message": result["message"],
             "canonical_id": result["canonical_id"],
-            "candidates": result["ambiguous_matches"]
+            "candidates": result["candidates"]
         }
         
     if result["status"] == "error":

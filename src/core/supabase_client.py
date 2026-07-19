@@ -137,3 +137,11 @@ class SupabaseDB:
             "candidates_json": candidates
         }
         self.client.table("search_cache").upsert(data, on_conflict="query_hash").execute()
+
+    def cleanup_old_search_cache(self, days: int = 3):
+        """
+        Cron Job Task: Deletes search cache entries older than 'days' to prevent stale data.
+        """
+        import datetime
+        threshold = (datetime.datetime.utcnow() - datetime.timedelta(days=days)).isoformat()
+        self.client.table("search_cache").delete().lt("created_at", threshold).execute()
