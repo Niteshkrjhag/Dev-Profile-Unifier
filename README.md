@@ -21,11 +21,17 @@ If `confidence < 0.85` but `>= 0.50`, the API halts the merge, flags the link as
 The fetcher layer uses `httpx` and `asyncio.gather` to hit all 4 APIs simultaneously. What would normally take 4-5 seconds of sequential blocking I/O now resolves in `< 1.5 seconds` bounded only by the slowest API (usually StackOverflow).
 
 ### 4. Storage (Supabase & RLS)
-The system uses Supabase Postgres with a strict 3-table schema:
+The system uses Supabase Postgres with a strict schema:
 1.  `raw_profiles`: Untouched JSON dumps from the platforms (Event Sourcing pattern).
 2.  `canonical_entities`: The resolved "Human" identity containing an LLM-generated executive summary.
 3.  `entity_links`: The junction table storing the confidence score and status (`confirmed`, `pending_review`).
-**Security Note:** The API requires the `service_role` (Secret) API key to bypass Row-Level Security when performing backend ingestion.
+4.  `search_cache`: High-speed cache for Name + Metadata searches to drastically reduce API rate limits.
+
+### 5. Caching & Fault Tolerance
+We engineered robust defenses against API limits and network instability:
+*   **Smart Query Caching:** When a user searches for a name (e.g., "Nitesh") and metadata (e.g., "Srinagar", "Apple"), the engine hashes these exact inputs. If the exact search is repeated, it skips the network and instantly returns the cached candidates.
+*   **Automated Cron Job:** A background loop runs automatically every 12 hours, deleting cached searches older than 3 days to prevent "stale" or outdated candidate lists.
+*   **Strict Error Handling:** All API fetchers enforce a 10-second timeout. Furthermore, if an API rate-limits us (like StackOverflow's backoff), the system explicitly halts and informs the frontend, preventing silent failures.
 
 ## 🚀 Running Locally
 
@@ -54,6 +60,6 @@ This repository contains a `render.yaml` file for zero-config Infrastructure-as-
 
 ## 🔮 Future Scaling Priorities
 If this were to scale to 1 million developers, the following bottlenecks would need addressing:
-1.  **Rate Limit Exhaustion:** Implement Redis-backed circuit breakers and a distributed proxy pool to cycle outbound IP addresses.
-2.  **LLM Cost/Latency:** Replace the Gemini tie-breaker with a fine-tuned open-weight model (e.g., Llama 3 8B) deployed on Groq or a dedicated vLLM instance to bring resolution costs near zero.
-3.  **Background Processing:** Move the ingestion layer out of the HTTP request cycle entirely. The `POST /resolve` endpoint should publish an event to a Kafka/RabbitMQ queue and return a `202 Accepted` with a Job ID for the client to poll.
+1.  **Distributed Rate Limiting:** Implement Redis-backed circuit breakers and a proxy pool to cycle outbound IP addresses.
+2.  **LLM Cost/Latency:** Replace the Gemini tie-breaker with a fine-tuned open-weight model (e.g., Llama 3 8B) deployed on Groq.
+3.  **Background Processing:** Move the ingestion layer out of the HTTP request cycle entirely into a message queue (Kafka/RabbitMQ).

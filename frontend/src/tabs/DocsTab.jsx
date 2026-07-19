@@ -9,7 +9,7 @@ mermaid.initialize({
 
 function MermaidDiagram({ chart }) {
   const ref = useRef(null);
-  
+
   useEffect(() => {
     if (ref.current) {
       try {
@@ -26,17 +26,20 @@ function MermaidDiagram({ chart }) {
 }
 
 export default function DocsTab() {
-  const diagram = \`
+  const diagram = `
     graph TD
       A[Client Request] --> B{Exact Handles Provided?}
-      B -- No --> C[Phase 1a: Name Search]
-      C --> D[Return 300 Choices]
+      B -- No --> C1[Hash: Name + Location + Workplace]
+      C1 --> C2{Exists in Cache?}
+      C2 -- Yes --> D[Return 300 Cached Choices]
+      C2 -- No --> C3[Fetch APIs & Save to Cache]
+      C3 --> D
       D --> E[User Selects Match]
       
-      B -- Yes --> F[Phase 0: Cache Check]
+      B -- Yes --> F[Phase 0: DB Check]
       E --> F
       
-      F --> G{Cached?}
+      F --> G{Exists in DB?}
       G -- Yes --> H[Return Profile]
       G -- No --> I[Phase 2: Graph Crawler]
       
@@ -46,7 +49,7 @@ export default function DocsTab() {
       L -- Yes --> J
       
       L -- No --> M[Phase 3a: Deterministic]
-      M --> N{Missing?}
+      M --> N{Missing Platforms?}
       
       N -- Yes --> O[Phase 3b: Fallback Search]
       O --> P[Gemini Tiebreaker]
@@ -57,7 +60,7 @@ export default function DocsTab() {
       N -- No --> T[Phase 4: LLM Summary]
       Q --> T
       T --> H
-  \`;
+  `;
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -77,7 +80,7 @@ export default function DocsTab() {
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
             <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <strong>Phase 1a (Disambiguation):</strong> If only a name is provided, the API fetches candidates from GitHub and StackOverflow, matching their raw bio text against user-provided metadata (location, workplace) to rank them.
+              <strong>Phase 1a (Smart Caching & Disambiguation):</strong> If only a name and metadata (Location, Workplace, etc.) are provided, we hash these exact inputs. We check our Database Cache to prevent redundant API calls. If missing, we fetch from GitHub and StackOverflow, rank them using the metadata, save them to the cache, and present the choices to the user. A background <strong>Cron Job</strong> runs every 12 hours to auto-delete caches older than 3 days, ensuring data never gets stale.
             </div>
             <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
               <strong>Phase 2 (Graph Crawler):</strong> We fetch the initial profile and scan its raw JSON (bio, website, blog links) using regex. If we find a cross-link (e.g. <code>dev.to/nitesh_jha</code> on GitHub), we recursively fetch that new profile. This loops up to 3 times to exhaust the graph deterministicly.
@@ -86,6 +89,20 @@ export default function DocsTab() {
               <strong>Phase 3 (LLM Tiebreaker):</strong> For any platforms still missing after the deterministic crawl, we perform a fallback name search. The raw JSON of the candidate profile is passed alongside our anchor data to Gemini. The LLM acts as a tie-breaker, analyzing nuanced signals (writing style, repo activity).
             </div>
           </div>
+        </section>
+
+        <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.1)' }} />
+
+        <section>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Fault Tolerance & Reliability</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>
+            The API is engineered to handle massive scale without silently failing.
+          </p>
+          <ul style={{ color: 'var(--text-secondary)', lineHeight: 1.6, paddingLeft: '20px' }}>
+            <li style={{ marginBottom: '8px' }}><strong>10-Second Strict Timeouts:</strong> Prevents our server from freezing if external APIs (like dev.to or HackerNews) go offline.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Rate Limit Protection:</strong> Explicitly intercepts HTTP 429 and StackOverflow "backoff" requests, instantly halting crawls and informing the frontend rather than pretending the user doesn't exist.</li>
+            <li style={{ marginBottom: '8px' }}><strong>LLM Markdown Stripping:</strong> A custom regex cleans Gemini JSON outputs, preventing critical tiebreaker crashes if the AI hallucinates markdown formatting.</li>
+          </ul>
         </section>
 
         <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.1)' }} />
