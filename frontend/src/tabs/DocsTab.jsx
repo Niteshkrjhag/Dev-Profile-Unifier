@@ -1,116 +1,73 @@
-import { useEffect, useRef } from 'react';
-import mermaid from 'mermaid';
-
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'dark',
-  securityLevel: 'loose',
-});
-
-function MermaidDiagram({ chart }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (ref.current) {
-      try {
-        mermaid.render('mermaid-svg-' + Math.random().toString(36).substring(7), chart).then((result) => {
-          ref.current.innerHTML = result.svg;
-        }).catch(e => console.error("Mermaid error:", e));
-      } catch (e) {
-        console.error("Mermaid sync error:", e);
-      }
-    }
-  }, [chart]);
-
-  return <div ref={ref} className="mermaid-container" style={{ display: 'flex', justifyContent: 'center', background: 'rgba(0,0,0,0.15)', padding: '24px', borderRadius: '12px', marginTop: '16px' }} />;
-}
+import React from 'react';
 
 export default function DocsTab() {
-  const diagram = `
-    graph TD
-      A[Client Request] --> B{Handle Provided?}
-      
-      B -- Yes --> C[Phase 0: DB Cache Check]
-      
-      B -- No --> D1[Phase 1: Hash Metadata]
-      D1 --> D2{In Cache?}
-      D2 -- Yes --> E[Return Cached Choices]
-      D2 -- No --> D3[Fetch APIs & Rank]
-      D3 --> E
-      E --> F[User Selects Match]
-      F --> C
-      
-      C --> G{In DB?}
-      G -- Yes --> H[Return Profile]
-      G -- No --> I[Phase 2: Graph Crawler]
-      
-      I --> J[Fetch Profiles]
-      J --> K[Parse Bio Links]
-      K --> L{New Links?}
-      L -- Yes --> J
-      
-      L -- No --> M[Phase 3: Fallback Search]
-      M --> N{Missing?}
-      
-      N -- Yes --> O[Gemini Tiebreaker]
-      O -->|Score > 0.85| Q[Auto-Merge]
-      O -->|Score > 0.50| R[Pending Audit]
-      O -->|Score < 0.50| S[Rejected]
-      
-      N -- No --> T[Phase 4: LLM Summary]
-      Q --> T
-      T --> H
-  `;
-
   return (
-    <div className="animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <div className="animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto', paddingBottom: '40px' }}>
       <div style={{ marginBottom: '32px' }}>
-        <h1>End-to-End Architecture</h1>
-        <p>A comprehensive guide to how the Effiflo Dev Profile Unifier resolves identities.</p>
+        <h1>Engineering Documentation</h1>
+        <p>A high-level overview of the Effiflo Dev Profile Unifier methodology and architecture.</p>
       </div>
 
-      <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+        
         <section>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>The 5-Phase Resolution Engine</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>
-            Identity resolution requires confirming that two disparate digital footprints belong to the exact same human. We solve this using a multi-phase deterministic-to-heuristic engine.
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>1. What it is</h2>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            <strong>The Dev Profile Unifier</strong> is an automated identity resolution engine. In plain English, it is a system that takes a developer's scattered online footprints (like their GitHub, StackOverflow, and HackerNews accounts) and mathematically proves they belong to the exact same human being, merging them into one unified profile.
           </p>
-          
-          <MermaidDiagram chart={diagram} />
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
-            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <strong>Phase 0 (Database Cache):</strong> If explicit handles are provided, we immediately check our canonical database. If the identity was previously resolved, we skip all network calls and return the unified profile in milliseconds.
+        </section>
+
+        <section>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>2. Why it exists</h2>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            Developers rarely use the same username across all platforms, and they rarely link all their accounts together in one place. Traditional sourcing relies on humans manually Googling names and guessing if "karan123" on GitHub is the same as "karan_dev" on StackOverflow. This system exists to eliminate that manual guesswork, providing recruiters and engineering managers with a perfectly verified, 360-degree view of a developer's actual skills and impact.
+          </p>
+        </section>
+
+        <section>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '16px', color: 'var(--accent-color)' }}>3. How it works (The Resolution Process)</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
+              <strong>Phase 0: Database Caching</strong><br/>
+              If we've seen this profile before, we instantly return the unified data from our Supabase PostgreSQL database, saving costly API calls and rendering in milliseconds.
             </div>
-            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <strong>Phase 1 (Disambiguation & Smart Caching):</strong> If only a Name and Metadata (Location, Workplace) are provided, we hash the inputs. If this exact search exists in our cache, we return the options instantly. If not, we fetch candidates from GitHub and StackOverflow, rank them based on bio metadata matches, save the results to the cache, and present the choices to the human user.
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
+              <strong>Phase 1: Disambiguation & Smart Caching</strong><br/>
+              When searching by name, we query multiple platforms and use string matching (like location and workplace) to rank candidates. The results are cached so we don't bombard APIs if you reload the page.
             </div>
-            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <strong>Phase 2 (Recursive Graph Crawler):</strong> Starting from the anchor profile, the system scans raw JSON (websites, bio links, blog URLs) using regex. If a cross-link is found (e.g., a Dev.to link on GitHub), we recursively fetch that new profile. This loop exhausts the deterministic graph.
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
+              <strong>Phase 2: Recursive Graph Crawler</strong><br/>
+              Once a profile is selected, we parse its raw JSON (bio links, websites) looking for explicit links to other platforms. If found, we recursively fetch them, ensuring 100% deterministic, mathematically proven links.
             </div>
-            <div style={{ background: 'var(--accent-color)', color: 'white', padding: '12px', borderRadius: '8px' }}>
-              <strong>Phase 3 (Gemini Tiebreaker):</strong> For any platforms still missing, we perform a fallback heuristic search. The raw JSON of the newly found profile is sent alongside our anchor profile to the LLM. Gemini analyzes signals like repo activity and writing style to score the match. Scores &gt;0.85 are auto-merged; scores &gt;0.50 are flagged for human audit.
+            <div style={{ background: 'rgba(40,199,111,0.05)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid var(--success-color)' }}>
+              <strong>Phase 3: LLM Tiebreaker (Heuristic Fallback)</strong><br/>
+              If platforms are still missing, we use Gemini 3.5 Flash AI to act as a human investigator. We feed it the anchor profile and the missing platform candidates. It looks for nuanced similarities (writing style, tech stack overlaps). Scores &gt;85% are auto-merged, while ambiguous matches are pushed to the Admin Audit console for manual review.
             </div>
-            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <strong>Phase 4 (Executive Summary):</strong> Once all platforms are verified, the unified data payload is sent to Gemini one last time to generate a professional, cohesive summary of the developer's entire career and impact.
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
+              <strong>Phase 4: Executive Summary Generation</strong><br/>
+              Finally, we feed the massively unified data payload back to Gemini to generate a single, highly readable executive summary of the developer's entire career.
             </div>
           </div>
         </section>
 
-        <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.1)' }} />
-
         <section>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Fault Tolerance & Reliability</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>
-            The API is engineered to handle massive scale without silently failing.
-          </p>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>4. Benefits</h2>
           <ul style={{ color: 'var(--text-secondary)', lineHeight: 1.6, paddingLeft: '20px' }}>
-            <li style={{ marginBottom: '8px' }}><strong>10-Second Strict Timeouts:</strong> Prevents our server from freezing if external APIs go offline.</li>
-            <li style={{ marginBottom: '8px' }}><strong>Rate Limit Protection:</strong> Explicitly intercepts HTTP 429 and StackOverflow "backoff" requests, instantly halting crawls and informing the frontend rather than swallowing the error.</li>
-            <li style={{ marginBottom: '8px' }}><strong>Automated Cron Jobs:</strong> A background loop runs every 12 hours to auto-delete Phase 1 caches older than 3 days, ensuring candidate lists never get stale.</li>
-            <li style={{ marginBottom: '8px' }}><strong>LLM Markdown Stripping:</strong> A custom regex cleans Gemini JSON outputs, preventing critical tiebreaker crashes if the AI hallucinates markdown formatting.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Extreme Accuracy:</strong> By relying on recursive graph traversal first, we guarantee deterministic links before ever relying on AI guesses.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Fault Tolerance:</strong> Deep integration with asyncio guarantees non-blocking execution, while rate limit interceptions prevent infinite retry loops from destroying the server.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Human-in-the-Loop (HITL):</strong> The Admin Audit console ensures the AI never makes destructive merges without human oversight on edge cases.</li>
           </ul>
         </section>
+
+        <section>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>5. Limitations (Why NOT to use it)</h2>
+          <ul style={{ color: 'var(--text-secondary)', lineHeight: 1.6, paddingLeft: '20px' }}>
+            <li style={{ marginBottom: '8px' }}><strong>API Rate Limiting:</strong> Free-tier GitHub and StackOverflow APIs aggressively throttle requests. At massive scale, enterprise API tokens are strictly required.</li>
+            <li style={{ marginBottom: '8px' }}><strong>LLM Hallucinations:</strong> While the tiebreaker is highly accurate, LLMs can occasionally misinterpret generic tech stacks (e.g., assuming two React developers in London are the same person). This is why the Human-in-the-Loop audit is mandatory for scores under 85%.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Context Window Bloat:</strong> Extremely active developers with thousands of repositories can exceed LLM token limits (160k chars), requiring aggressive JSON pruning which risks dropping nuanced data.</li>
+          </ul>
+        </section>
+
       </div>
     </div>
   );
