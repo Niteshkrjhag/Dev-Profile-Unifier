@@ -159,12 +159,13 @@ export default function DashboardTab() {
           )}
 
           {result?.type === 'disambiguation' && (
-            <div className="glass-panel animate-fade-in" style={{ padding: '24px', border: '1px solid #FFCC00' }}>
+            <div className="glass-panel animate-fade-in" style={{ padding: '24px', border: '1px solid #FFCC00', display: 'flex', flexDirection: 'column', maxHeight: '550px' }}>
               <h2>⚠️ Multiple Choices Detected</h2>
               <p style={{ marginBottom: '16px' }}>
                 {result.data.message || 'Multiple profiles match this identity. Please select the correct one or review pending links in the Admin Tab.'}
               </p>
-              {result.data.candidates.map((c, i) => {
+              <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
+                {result.data.candidates.map((c, i) => {
                 const profile = c.data?.profile || {};
                 const profileUrl = c.platform === 'github' ? profile.html_url : profile.link;
                 const bioText = profile.bio || profile.about_me || '';
@@ -245,6 +246,7 @@ export default function DashboardTab() {
                   </div>
                 );
               })}
+              </div>
             </div>
           )}
         </div>
