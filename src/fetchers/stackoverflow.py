@@ -24,9 +24,10 @@ class StackOverflowFetcher(BaseFetcher):
         # 1. Resolve handle to user_id
         user_id = handle
         if not handle.isdigit():
-            user_id = await self._search_for_user_id(handle)
-            if not user_id:
+            user_ids = await self._search_for_user_ids(handle)
+            if not user_ids:
                 return {} # User not found
+            user_id = user_ids[0]
                 
         # Base query params for Stack Exchange API
         params = {"site": self.site}

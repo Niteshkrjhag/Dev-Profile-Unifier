@@ -248,37 +248,47 @@ class ProfileResolver:
             
             base_data = fetched_profiles[base_platform]
             
+            async def evaluate_candidate(platform, candidate_data):
+                cand_handle = candidate_data.get("handle", "unknown")
+                raw_id = await asyncio.to_thread(self.db.find_raw_profile_id, platform, cand_handle)
+                if not raw_id:
+                    raw_id = await asyncio.to_thread(self.db.insert_raw_profile, platform, cand_handle, candidate_data)
+                
+                try:
+                    is_match, conf, reason_text, tokens = await self.llm.tiebreaker_resolution(base_data, candidate_data, user_metadata)
+                    return (platform, cand_handle, raw_id, candidate_data, is_match, conf, reason_text, tokens, None)
+                except Exception as e:
+                    reason = "LLM tiebreaker unavailable - requires manual review" if "No API key" in str(e) else str(e)
+                    return (platform, cand_handle, raw_id, candidate_data, False, 0.0, reason, 0, e)
+
+            eval_tasks = []
             for platform, candidates in zip(missing_platforms, fallback_results):
-                if isinstance(candidates, Exception):
-                    resolution_warnings.append(f"{platform} Phase 3 failed: {str(candidates)}")
+                if isinstance(candidates, Exception) or not candidates:
                     continue
                 for candidate_data in candidates:
-                    cand_handle = candidate_data.get("handle", "unknown")
-                    raw_id = await asyncio.to_thread(self.db.insert_raw_profile, platform, cand_handle, candidate_data)
+                    eval_tasks.append(evaluate_candidate(platform, candidate_data))
                     
-                    # LLM Tiebreaker
-                    try:
-                        is_match, conf, reason_text, tokens = await self.llm.tiebreaker_resolution(base_data, candidate_data, user_metadata)
-                        tracker.record_llm_usage(tokens)
-                    except LLMConfigurationError as e:
-                        resolution_warnings.append(str(e))
-                        is_match, conf = False, 0.0
-                        reason_text = "LLM tiebreaker unavailable - requires manual review"
+            if eval_tasks:
+                eval_results = await asyncio.gather(*eval_tasks)
+                
+                platform_results = {}
+                for res in eval_results:
+                    p = res[0]
+                    if p not in platform_results:
+                        platform_results[p] = []
+                    platform_results[p].append(res)
                     
-                    if len(reason_text) > 250:
-                        reason_text = reason_text[:247] + "..."
-                        
-                    if mode == 'autonomous' and conf >= 0.85:
-                        await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, conf, reason_text, "confirmed")
-                        await asyncio.to_thread(self.db.reject_other_links_for_platform, canonical_id, platform, raw_id)
-                        fetched_profiles[platform] = candidate_data
-                        break # Stop checking other candidates for this platform
-                    else:
-                        link_status = "pending_review" if conf >= 0.5 or not self.llm.client else "rejected"
-                        if reason_text == "LLM tiebreaker unavailable - requires manual review":
-                            link_status = "pending_review"
-                        await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, conf, reason_text, link_status)
-                        if conf >= 0.5:
+                for platform, results in platform_results.items():
+                    results.sort(key=lambda x: x[5], reverse=True)
+                    for res in results:
+                        _, cand_handle, raw_id, candidate_data, is_match, conf, reason_text, tokens, err = res
+                        if tokens > 0:
+                            tracker.record_llm_usage(tokens)
+                            
+                        if err:
+                            resolution_warnings.append(f"LLM Tiebreaker unavailable/failed for {platform}/{cand_handle}: {str(err)}")
+                            # Force pending review if LLM failed
+                            await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, conf, reason_text, "pending_review")
                             ambiguous_matches.append({
                                 "platform": platform,
                                 "handle": cand_handle,
@@ -286,8 +296,27 @@ class ProfileResolver:
                                 "reason": reason_text,
                                 "raw_id": raw_id,
                                 "data": candidate_data,
-                                "match_score": 0 # For frontend compatibility
+                                "match_score": 0
                             })
+                            continue
+                            
+                        if is_match:
+                            if mode == 'autonomous' and conf >= 0.85:
+                                await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, conf, reason_text, "confirmed")
+                                await asyncio.to_thread(self.db.reject_other_links_for_platform, canonical_id, platform, raw_id)
+                                fetched_profiles[platform] = candidate_data
+                                break
+                            else:
+                                await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, conf, reason_text, "pending_review")
+                                ambiguous_matches.append({
+                                    "platform": platform,
+                                    "handle": cand_handle,
+                                    "confidence": conf,
+                                    "reason": reason_text,
+                                    "raw_id": raw_id,
+                                    "data": candidate_data,
+                                    "match_score": 0
+                                })
 
         # Generate LLM Summary based on confirmed links
         final_profile = await asyncio.to_thread(self.db.get_full_canonical_profile, canonical_id)
