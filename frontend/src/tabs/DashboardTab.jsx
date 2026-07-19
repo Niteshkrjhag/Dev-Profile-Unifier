@@ -163,40 +163,6 @@ export default function DashboardTab() {
       <div style={{ display: 'flex', gap: '40px' }}>
         <div style={{ flex: 1, maxWidth: '450px' }}>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }}>
-              <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-color)', marginBottom: '8px' }}>ENGINE MODES</p>
-
-              <div style={{ display: 'flex', gap: '16px', fontSize: '0.9rem', marginBottom: '12px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                  <input type="radio" name="mode" value="transparent" disabled={formData.depth === 'lighter'} checked={formData.mode === 'transparent'} onChange={(e) => setFormData({ ...formData, mode: e.target.value })} />
-                  Transparent (Manual Review)
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                  <input type="radio" name="mode" value="autonomous" checked={formData.mode === 'autonomous'} onChange={(e) => setFormData({ ...formData, mode: e.target.value })} />
-                  Autonomous (AI Auto-Merge)
-                </label>
-              </div>
-
-              <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-color)', marginBottom: '8px', marginTop: '16px' }}>CRAWL DEPTH</p>
-              <div style={{ display: 'flex', gap: '16px', fontSize: '0.9rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                  <input type="radio" name="depth" value="lighter" checked={formData.depth === 'lighter'} onChange={(e) => {
-                    // Force autonomous mode when lighter search is selected
-                    setFormData({ ...formData, depth: e.target.value, mode: 'autonomous' })
-                  }} />
-                  Lighter (1 Iter)
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                  <input type="radio" name="depth" value="normal" checked={formData.depth === 'normal'} onChange={(e) => setFormData({ ...formData, depth: e.target.value })} />
-                  Normal (3 Iter)
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                  <input type="radio" name="depth" value="deeper" checked={formData.depth === 'deeper'} onChange={(e) => setFormData({ ...formData, depth: e.target.value })} />
-                  Deeper (5 Iter)
-                </label>
-              </div>
-            </div>
-
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Full Name (Mandatory)</label>
               <input
@@ -398,23 +364,23 @@ export default function DashboardTab() {
       {/* Premium Settings Modal */}
       {isSettingsOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={() => setIsSettingsOpen(false)}>
-          <div style={{ background: 'var(--panel-bg)', padding: '32px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', width: '90%', maxWidth: '600px', animation: 'fadeInUp 0.3s ease' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: '#ffffff', padding: '32px', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', width: '90%', maxWidth: '600px', animation: 'fadeInUp 0.3s ease' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>⚙️ Engine Configuration</h2>
-              <button onClick={() => setIsSettingsOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '1.8rem', cursor: 'pointer', lineHeight: 1 }}>&times;</button>
+              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', color: '#111' }}>⚙️ Engine Configuration</h2>
+              <button onClick={() => setIsSettingsOpen(false)} style={{ background: 'transparent', border: 'none', color: '#666', fontSize: '1.8rem', cursor: 'pointer', lineHeight: 1 }}>&times;</button>
             </div>
 
             <div style={{ marginBottom: '28px' }}>
-              <h3 style={{ fontSize: '0.9rem', letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '16px' }}>Operational Mode</h3>
+              <h3 style={{ fontSize: '0.9rem', letterSpacing: '1px', textTransform: 'uppercase', color: '#666', marginBottom: '16px' }}>Operational Mode</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div 
                   onClick={() => { if(formData.depth !== 'lighter') setFormData({...formData, mode: 'transparent'}) }}
-                  style={{ padding: '20px', borderRadius: '12px', border: formData.mode === 'transparent' ? '2px solid var(--success-color)' : '1px solid rgba(255,255,255,0.1)', background: formData.mode === 'transparent' ? 'rgba(40,199,111,0.05)' : 'rgba(255,255,255,0.02)', cursor: formData.depth === 'lighter' ? 'not-allowed' : 'pointer', opacity: formData.depth === 'lighter' ? 0.5 : 1, transition: 'all 0.2s', display: 'flex', alignItems: 'flex-start', gap: '16px' }}
+                  style={{ padding: '20px', borderRadius: '12px', border: formData.mode === 'transparent' ? '2px solid var(--success-color)' : '1px solid rgba(0,0,0,0.1)', background: formData.mode === 'transparent' ? 'rgba(40,199,111,0.05)' : '#f8f9fa', cursor: formData.depth === 'lighter' ? 'not-allowed' : 'pointer', opacity: formData.depth === 'lighter' ? 0.5 : 1, transition: 'all 0.2s', display: 'flex', alignItems: 'flex-start', gap: '16px' }}
                 >
                   <input type="radio" checked={formData.mode === 'transparent'} readOnly style={{ accentColor: 'var(--success-color)', marginTop: '4px' }} />
                   <div>
-                    <strong style={{ color: formData.mode === 'transparent' ? 'var(--success-color)' : 'var(--text-primary)', display: 'block', fontSize: '1.1rem', marginBottom: '6px' }}>Transparent (Human-in-the-Loop)</strong>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5' }}>
+                    <strong style={{ color: formData.mode === 'transparent' ? 'var(--success-color)' : '#333', display: 'block', fontSize: '1.1rem', marginBottom: '6px' }}>Transparent (Human-in-the-Loop)</strong>
+                    <p style={{ fontSize: '0.9rem', color: '#666', margin: 0, lineHeight: '1.5' }}>
                       Phase 1 exact matches and Phase 3 LLM fallbacks will pause the engine and require your manual verification. Recommended for precise auditing.
                     </p>
                   </div>
@@ -422,12 +388,12 @@ export default function DashboardTab() {
                 
                 <div 
                   onClick={() => setFormData({...formData, mode: 'autonomous'})}
-                  style={{ padding: '20px', borderRadius: '12px', border: formData.mode === 'autonomous' ? '2px solid var(--accent-color)' : '1px solid rgba(255,255,255,0.1)', background: formData.mode === 'autonomous' ? 'rgba(115,103,240,0.05)' : 'rgba(255,255,255,0.02)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'flex-start', gap: '16px' }}
+                  style={{ padding: '20px', borderRadius: '12px', border: formData.mode === 'autonomous' ? '2px solid var(--accent-color)' : '1px solid rgba(0,0,0,0.1)', background: formData.mode === 'autonomous' ? 'rgba(115,103,240,0.05)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'flex-start', gap: '16px' }}
                 >
                   <input type="radio" checked={formData.mode === 'autonomous'} readOnly style={{ accentColor: 'var(--accent-color)', marginTop: '4px' }} />
                   <div>
-                    <strong style={{ color: formData.mode === 'autonomous' ? 'var(--accent-color)' : 'var(--text-primary)', display: 'block', fontSize: '1.1rem', marginBottom: '6px' }}>Autonomous (AI Auto-Merge)</strong>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5' }}>
+                    <strong style={{ color: formData.mode === 'autonomous' ? 'var(--accent-color)' : '#333', display: 'block', fontSize: '1.1rem', marginBottom: '6px' }}>Autonomous (AI Auto-Merge)</strong>
+                    <p style={{ fontSize: '0.9rem', color: '#666', margin: 0, lineHeight: '1.5' }}>
                       The engine will automatically merge the highest scoring candidates and seamlessly proceed without human intervention. Highly efficient.
                     </p>
                   </div>
@@ -436,33 +402,33 @@ export default function DashboardTab() {
             </div>
 
             <div>
-              <h3 style={{ fontSize: '0.9rem', letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '16px' }}>Crawl Depth Limit</h3>
+              <h3 style={{ fontSize: '0.9rem', letterSpacing: '1px', textTransform: 'uppercase', color: '#666', marginBottom: '16px' }}>Crawl Depth Limit</h3>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div 
                   onClick={() => setFormData({...formData, depth: 'lighter', mode: 'autonomous'})}
-                  style={{ flex: 1, padding: '16px', borderRadius: '12px', border: formData.depth === 'lighter' ? '2px solid var(--text-primary)' : '1px solid rgba(255,255,255,0.1)', background: formData.depth === 'lighter' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
+                  style={{ flex: 1, padding: '16px', borderRadius: '12px', border: formData.depth === 'lighter' ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)', background: formData.depth === 'lighter' ? 'rgba(0,0,0,0.03)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
                 >
-                  <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '6px' }}>Lighter</strong>
+                  <strong style={{ fontSize: '1.05rem', color: '#333', marginBottom: '6px' }}>Lighter</strong>
                   <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 600, marginBottom: '12px' }}>1 Iteration</div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.4', flex: 1 }}>Fastest search. Forces Autonomous Mode.</p>
+                  <p style={{ fontSize: '0.8rem', color: '#666', margin: 0, lineHeight: '1.4', flex: 1 }}>Fastest search. Forces Autonomous Mode.</p>
                 </div>
                 
                 <div 
                   onClick={() => setFormData({...formData, depth: 'normal'})}
-                  style={{ flex: 1, padding: '16px', borderRadius: '12px', border: formData.depth === 'normal' ? '2px solid var(--text-primary)' : '1px solid rgba(255,255,255,0.1)', background: formData.depth === 'normal' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
+                  style={{ flex: 1, padding: '16px', borderRadius: '12px', border: formData.depth === 'normal' ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)', background: formData.depth === 'normal' ? 'rgba(0,0,0,0.03)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
                 >
-                  <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '6px' }}>Normal</strong>
+                  <strong style={{ fontSize: '1.05rem', color: '#333', marginBottom: '6px' }}>Normal</strong>
                   <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 600, marginBottom: '12px' }}>3 Iterations</div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.4', flex: 1 }}>Standard depth. Balances speed with thoroughness.</p>
+                  <p style={{ fontSize: '0.8rem', color: '#666', margin: 0, lineHeight: '1.4', flex: 1 }}>Standard depth. Balances speed with thoroughness.</p>
                 </div>
                 
                 <div 
                   onClick={() => setFormData({...formData, depth: 'deeper'})}
-                  style={{ flex: 1, padding: '16px', borderRadius: '12px', border: formData.depth === 'deeper' ? '2px solid var(--text-primary)' : '1px solid rgba(255,255,255,0.1)', background: formData.depth === 'deeper' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
+                  style={{ flex: 1, padding: '16px', borderRadius: '12px', border: formData.depth === 'deeper' ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)', background: formData.depth === 'deeper' ? 'rgba(0,0,0,0.03)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
                 >
-                  <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '6px' }}>Deeper</strong>
+                  <strong style={{ fontSize: '1.05rem', color: '#333', marginBottom: '6px' }}>Deeper</strong>
                   <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 600, marginBottom: '12px' }}>5 Iterations</div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.4', flex: 1 }}>Deep dive to find highly obscure profiles.</p>
+                  <p style={{ fontSize: '0.8rem', color: '#666', margin: 0, lineHeight: '1.4', flex: 1 }}>Deep dive to find highly obscure profiles.</p>
                 </div>
               </div>
             </div>
