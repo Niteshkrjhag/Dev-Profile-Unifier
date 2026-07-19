@@ -3,10 +3,11 @@ import { useState, useEffect } from 'react';
 export default function DashboardTab() {
   const [formData, setFormData] = useState(() => {
     const saved = sessionStorage.getItem('effiflo_formData');
-    return saved ? JSON.parse(saved) : {
-      name: '', github: '', stackoverflow: '', devto: '', hackernews: '',
-      location: '', workplace: '', gender: '', profession_status: '',
-      mode: 'transparent', depth: 'normal'
+    const parsed = saved ? JSON.parse(saved) : {};
+    return {
+      name: parsed.name || '', github: parsed.github || '', stackoverflow: parsed.stackoverflow || '', devto: parsed.devto || '', hackernews: parsed.hackernews || '',
+      location: parsed.location || '', workplace: parsed.workplace || '', gender: parsed.gender || '', profession_status: parsed.profession_status || '',
+      mode: parsed.mode || 'transparent', depth: parsed.depth || 'normal'
     };
   });
   const [loading, setLoading] = useState(false);
@@ -14,6 +15,7 @@ export default function DashboardTab() {
     const saved = sessionStorage.getItem('effiflo_result');
     return saved ? JSON.parse(saved) : null;
   });
+  const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
