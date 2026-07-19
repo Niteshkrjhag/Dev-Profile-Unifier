@@ -124,7 +124,7 @@ class SupabaseDB:
 
     def get_search_cache(self, query_hash: str) -> list:
         """
-        Phase 1a: Check if we have previously cached the multiple choices for this query hash.
+        Phase 1: Check if we have previously cached the multiple choices for this query hash.
         """
         res = self.client.table("search_cache").select("candidates_json").eq("query_hash", query_hash).execute()
         if res.data and len(res.data) > 0:
@@ -133,7 +133,7 @@ class SupabaseDB:
 
     def save_search_cache(self, query_hash: str, candidates: list):
         """
-        Phase 1a: Save the multiple choices to prevent redundant API calls for exact same queries.
+        Phase 1: Save the multiple choices to prevent redundant API calls for exact same queries.
         """
         data = {
             "query_hash": query_hash,

@@ -76,7 +76,7 @@ class ProfileResolver:
                 tracker.record_resolution_time((asyncio.get_event_loop().time() - start_time) * 1000)
                 return {"status": "success", "canonical_id": cached_id}
 
-        # Phase 1a: Name-Only Short Circuit
+        # Phase 1: Disambiguation & Smart Caching
         if not handles and name:
             query_str = f"{name.lower()}|{str(user_metadata).lower() if user_metadata else ''}"
             query_hash = hashlib.md5(query_str.encode()).hexdigest()
@@ -102,7 +102,7 @@ class ProfileResolver:
             )
             for platform_name, plat_res in zip(["github", "stackoverflow", "devto", "hackernews"], results):
                 if isinstance(plat_res, Exception):
-                    resolution_warnings.append(f"{platform_name} Phase 1a failed: {str(plat_res)}")
+                    resolution_warnings.append(f"{platform_name} Phase 1 failed: {str(plat_res)}")
                     continue
                 for c in plat_res:
                     match_score = 0
@@ -206,12 +206,12 @@ class ProfileResolver:
         canonical_name = name or extracted_name or fetched_profiles[base_platform].get("handle", "Unknown User")
         canonical_id = await asyncio.to_thread(self.db.create_canonical_entity, canonical_name)
 
-        # Phase 3a: Deterministic Graph Resolution
+        # Bind Graph Handles (End of Phase 2)
         for platform, raw_id in raw_ids.items():
             reason = "explicit_handle" if platform in handles else "graph_traversal_extraction"
             await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, 1.0, reason, "confirmed")
 
-        # Phase 3b: Fallback Name Search for missing orphans
+        # Phase 3: LLM Tiebreaker (Heuristic Fallback)
         ambiguous_matches = []
         missing_platforms = [p for p in ["github", "stackoverflow", "devto", "hackernews"] if p not in fetched_profiles]
         if missing_platforms and name:
@@ -222,7 +222,7 @@ class ProfileResolver:
             
             for platform, candidates in zip(missing_platforms, fallback_results):
                 if isinstance(candidates, Exception):
-                    resolution_warnings.append(f"{platform} Phase 3b failed: {str(candidates)}")
+                    resolution_warnings.append(f"{platform} Phase 3 failed: {str(candidates)}")
                     continue
                 for candidate_data in candidates:
                     cand_handle = candidate_data.get("handle", "unknown")
