@@ -1,14 +1,32 @@
 import { useState, useEffect } from 'react';
 
 export default function DashboardTab() {
-  const [formData, setFormData] = useState({ 
-    name: '', github: '', stackoverflow: '', devto: '', hackernews: '',
-    location: '', workplace: '', gender: '', profession_status: '' 
+  const [formData, setFormData] = useState(() => {
+    const saved = sessionStorage.getItem('effiflo_formData');
+    return saved ? JSON.parse(saved) : { 
+      name: '', github: '', stackoverflow: '', devto: '', hackernews: '',
+      location: '', workplace: '', gender: '', profession_status: '' 
+    };
   });
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(() => {
+    const saved = sessionStorage.getItem('effiflo_result');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(null);
+
+  useEffect(() => {
+    sessionStorage.setItem('effiflo_formData', JSON.stringify(formData));
+  }, [formData]);
+
+  useEffect(() => {
+    if (result) {
+      sessionStorage.setItem('effiflo_result', JSON.stringify(result));
+    } else {
+      sessionStorage.removeItem('effiflo_result');
+    }
+  }, [result]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

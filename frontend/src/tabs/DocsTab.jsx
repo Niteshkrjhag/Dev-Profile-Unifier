@@ -1,6 +1,62 @@
+import { useEffect, useRef } from 'react';
+import mermaid from 'mermaid';
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark',
+  securityLevel: 'loose',
+});
+
+function MermaidDiagram({ chart }) {
+  const ref = useRef(null);
+  
+  useEffect(() => {
+    if (ref.current) {
+      mermaid.render('mermaid-svg-' + Math.random().toString(36).substring(7), chart).then((result) => {
+        ref.current.innerHTML = result.svg;
+      });
+    }
+  }, [chart]);
+
+  return <div ref={ref} className="mermaid-container" style={{ display: 'flex', justifyContent: 'center', background: 'rgba(0,0,0,0.15)', padding: '24px', borderRadius: '12px', marginTop: '16px' }} />;
+}
+
 export default function DocsTab() {
+  const diagram = `
+    graph TD
+      A[Client Request] --> B{Exact Handles Provided?}
+      B -- No (Name Only) --> C[Phase 1a: Name Search]
+      C --> D[Return 300 Multiple Choices]
+      D --> E[User Selects Match]
+      
+      B -- Yes --> F[Phase 0: Cache Check]
+      E --> F
+      
+      F --> G{Canonical Profile Exists?}
+      G -- Yes --> H[Return Profile]
+      G -- No --> I[Phase 2: Iterative Graph Crawler]
+      
+      I --> J[Fetch Available Profiles]
+      J --> K[Parse Bio/Links for other platforms]
+      K --> L{New Links Found?}
+      L -- Yes (Max 3 Iterations) --> J
+      
+      L -- No --> M[Phase 3a: Deterministic Linking]
+      M --> N{Missing Platforms?}
+      
+      N -- Yes --> O[Phase 3b: Fallback Search]
+      O --> P[Gemini 3.5 LLM Tiebreaker]
+      P -- "Confidence > 0.85" --> Q[Auto-Merge]
+      P -- "Confidence > 0.50" --> R[Pending Admin Review]
+      P -- "Confidence < 0.50" --> S[Rejected]
+      
+      N -- No --> T[Phase 4: LLM Executive Summary]
+      Q --> T
+      T --> H
+  `;
+
   return (
-    <div className="animate-fade-in" style={{ maxWidth: '800px' }}>
+    <div className="animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ marginBottom: '32px' }}>
         <h1>Architecture & API</h1>
         <p>Reference documentation for the Effiflo Dev Profile Unifier.</p>
@@ -8,28 +64,22 @@ export default function DocsTab() {
 
       <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
         <section>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '16px' }}>The 4-Tier Resolution Engine</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            Master Data Management (MDM) requires determining if two platform accounts belong to the exact same human. We solve this using a deterministic-to-heuristic funnel:
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>The Iterative Graph Crawler Pipeline</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>
+            Master Data Management (MDM) requires determining if two platform accounts belong to the exact same human. We solve this using a multi-phase deterministic-to-heuristic engine that recursively maps a developer's digital footprint.
           </p>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <MermaidDiagram chart={diagram} />
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
             <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <strong>Tier 1 (Explicit Anchor):</strong> If the user provides an exact platform handle (e.g., github: <code>Niteshkrjhag</code>) in the payload, the system bypasses searching and treats it as a 1.0 confidence match.
+              <strong>Phase 1a (Disambiguation):</strong> If only a name is provided, the API fetches candidates from GitHub and StackOverflow, matching their raw bio text against user-provided metadata (location, workplace) to rank them.
             </div>
             <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <strong>Tier 2 (Cross-Pollination):</strong> (Conceptual) Extracting social links explicitly listed on a fetched profile (e.g., a Twitter link found in a GitHub bio) to definitively link the next platform.
-            </div>
-            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <strong>Tier 3 (Heuristic Overlaps):</strong> (Conceptual) Calculating Levenshtein string distance on names, locations, and intersecting tech stacks before resorting to expensive LLM inference.
+              <strong>Phase 2 (Graph Crawler):</strong> We fetch the initial profile and scan its raw JSON (bio, website, blog links) using regex. If we find a cross-link (e.g. <code>dev.to/nitesh_jha</code> on GitHub), we recursively fetch that new profile. This loops up to 3 times to exhaust the graph deterministicly.
             </div>
             <div style={{ background: 'var(--accent-color)', color: 'white', padding: '12px', borderRadius: '8px' }}>
-              <strong>Tier 4 (LLM Semantic Judge):</strong> For ambiguous name-based searches, the raw JSON of the candidate profile is passed alongside our anchor data to <code>Gemini 3.5 Flash</code>. The LLM acts as a tie-breaker, analyzing nuanced signals (writing style, repo activity).
-              <ul style={{ paddingLeft: '20px', marginTop: '8px', opacity: 0.9 }}>
-                <li><strong>&gt; 0.85:</strong> Auto-merged.</li>
-                <li><strong>0.50 - 0.85:</strong> Halted & marked <code>pending_review</code> (Requires Admin Audit).</li>
-                <li><strong>&lt; 0.50:</strong> Rejected.</li>
-              </ul>
+              <strong>Phase 3 (LLM Tiebreaker):</strong> For any platforms still missing after the deterministic crawl, we perform a fallback name search. The raw JSON of the candidate profile is passed alongside our anchor data to Gemini. The LLM acts as a tie-breaker, analyzing nuanced signals (writing style, repo activity).
             </div>
           </div>
         </section>
