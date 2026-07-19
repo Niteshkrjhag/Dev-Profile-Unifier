@@ -164,7 +164,6 @@ export default function DashboardTab() {
     setSelectedCandidates({});
     
     setLoading(true);
-    setActivePhase(0);
     setError(null);
     setResult(null);
 
