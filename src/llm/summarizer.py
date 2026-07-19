@@ -64,18 +64,17 @@ class LLMService:
                 )
             )
             
-            # Clean potential markdown formatting (```json ... ```)
-            import re
-            cleaned_text = re.sub(r"```json\s*", "", response.text)
-            cleaned_text = re.sub(r"```\s*$", "", cleaned_text).strip()
-            result = json.loads(cleaned_text)
+            # Safely extract the Pydantic object natively
+            result = response.parsed
             
-            # Extract tokens if available (google-genai metadata varies, this is a safe approach)
+            # Extract tokens if available
             tokens = 0
             if hasattr(response, "usage_metadata") and response.usage_metadata:
                 tokens = getattr(response.usage_metadata, "total_token_count", 0)
                 
-            return result.get("is_match", False), result.get("confidence", 0.0), result.get("reason", "LLM error"), tokens
+            if result:
+                return result.is_match, result.confidence, result.reason, tokens
+            return False, 0.0, "LLM returned empty structured response", tokens
             
         except Exception as e:
             return False, 0.0, f"Error calling Gemini: {str(e)}", 0
@@ -88,6 +87,22 @@ class LLMService:
         if not self.client:
             return "No LLM key configured.", 0
             
+        # Prevent Context Window Bloat (Prune if > ~40k tokens / 160,000 chars)
+        if len(unified_data) > 160000:
+            try:
+                data_dict = json.loads(unified_data)
+                pruned_data = {}
+                for plat, p_data in data_dict.items():
+                    if isinstance(p_data, dict):
+                        pruned_data[plat] = {
+                            "profile": p_data.get("profile", {}),
+                            "languages": p_data.get("languages", {}),
+                            "top_tags": p_data.get("top_tags", [])
+                        }
+                unified_data = json.dumps(pruned_data)
+            except Exception:
+                pass # Fallback if string is not valid JSON
+                
         prompt = f"""
         Write a concise, 1-paragraph professional summary of this developer based on their combined footprint.
         Highlight their primary languages, key focus areas, and notable impact. Do NOT invent information.

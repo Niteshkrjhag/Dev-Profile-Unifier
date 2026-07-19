@@ -38,16 +38,25 @@ class GithubFetcher(BaseFetcher):
                 data["profile"] = res.json()
                 
                 # 2. Fetch Repos (for languages and tech stack inference)
-                repos_res = await client.get(f"{self.base_url}/users/{handle}/repos?sort=updated&per_page=30", headers=self.headers)
-                self._track_response(repos_res)
-                if repos_res.status_code == 200:
-                    repos = repos_res.json()
-                    lang_counts = {}
-                    for r in repos:
-                        lang = r.get("language")
-                        if lang:
-                            lang_counts[lang] = lang_counts.get(lang, 0) + 1
-                    data["languages"] = lang_counts
+                lang_counts = {}
+                page = 1
+                while page <= 5:
+                    repos_res = await client.get(f"{self.base_url}/users/{handle}/repos?sort=updated&per_page=30&page={page}", headers=self.headers)
+                    self._track_response(repos_res)
+                    if repos_res.status_code == 200:
+                        repos = repos_res.json()
+                        if not repos:
+                            break # No more repos
+                        for r in repos:
+                            lang = r.get("language")
+                            if lang:
+                                lang_counts[lang] = lang_counts.get(lang, 0) + 1
+                        if len(repos) < 30:
+                            break # Last page
+                    else:
+                        break # Stop on error
+                    page += 1
+                data["languages"] = lang_counts
                 
                 # 3. Fetch Recent Activity (Events)
                 events_res = await client.get(f"{self.base_url}/users/{handle}/events/public?per_page=30", headers=self.headers)

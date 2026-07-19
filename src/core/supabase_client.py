@@ -69,14 +69,17 @@ class SupabaseDB:
         """
         # We use a join query via Supabase PostgREST
         res = self.client.table("canonical_entities") \
-            .select("*, entity_links(confidence_score, match_reason, raw_profiles(platform, handle, raw_data))") \
+            .select("*, entity_links(status, confidence_score, match_reason, raw_profiles(platform, handle, raw_data))") \
             .eq("id", canonical_id) \
-            .eq("entity_links.status", "confirmed") \
             .execute()
             
         if not res.data:
             return None
-        return res.data[0]
+            
+        data = res.data[0]
+        # Filter natively in Python to avoid PostgREST inner join elimination bug
+        data["entity_links"] = [link for link in data.get("entity_links", []) if link.get("status") == "confirmed"]
+        return data
 
     def find_canonical_by_handle(self, platform: str, handle: str) -> str:
         """
@@ -143,5 +146,5 @@ class SupabaseDB:
         Cron Job Task: Deletes search cache entries older than 'days' to prevent stale data.
         """
         import datetime
-        threshold = (datetime.datetime.utcnow() - datetime.timedelta(days=days)).isoformat()
+        threshold = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)).isoformat()
         self.client.table("search_cache").delete().lt("created_at", threshold).execute()
