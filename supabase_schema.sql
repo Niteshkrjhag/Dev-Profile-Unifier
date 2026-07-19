@@ -35,3 +35,11 @@ CREATE TABLE entity_links (
 -- Indexes for performance
 CREATE INDEX idx_raw_profiles_platform_handle ON raw_profiles(platform, handle);
 CREATE INDEX idx_entity_links_status ON entity_links(status);
+
+-- 4. Search Cache Table (Phase 1a)
+-- Stores the ~300 raw candidate choices for a specific name/metadata query.
+CREATE TABLE search_cache (
+    query_hash VARCHAR(255) PRIMARY KEY,
+    candidates_json JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);

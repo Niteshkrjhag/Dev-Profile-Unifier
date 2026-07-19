@@ -118,3 +118,22 @@ class SupabaseDB:
             .eq("canonical_id", canonical_id) \
             .eq("raw_profile_id", raw_profile_id) \
             .execute()
+
+    def get_search_cache(self, query_hash: str) -> list:
+        """
+        Phase 1a: Check if we have previously cached the multiple choices for this query hash.
+        """
+        res = self.client.table("search_cache").select("candidates_json").eq("query_hash", query_hash).execute()
+        if res.data and len(res.data) > 0:
+            return res.data[0]["candidates_json"]
+        return None
+
+    def save_search_cache(self, query_hash: str, candidates: list):
+        """
+        Phase 1a: Save the multiple choices to prevent redundant API calls for exact same queries.
+        """
+        data = {
+            "query_hash": query_hash,
+            "candidates_json": candidates
+        }
+        self.client.table("search_cache").upsert(data, on_conflict="query_hash").execute()

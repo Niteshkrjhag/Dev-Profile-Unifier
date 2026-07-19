@@ -1,5 +1,6 @@
 import asyncio
 import re
+import hashlib
 from typing import Dict, Any, List
 from src.core.supabase_client import SupabaseDB
 from src.llm.summarizer import LLMService
@@ -69,6 +70,19 @@ class ProfileResolver:
 
         # Phase 1a: Name-Only Short Circuit
         if not handles and name:
+            query_str = f"{name.lower()}|{str(user_metadata).lower() if user_metadata else ''}"
+            query_hash = hashlib.md5(query_str.encode()).hexdigest()
+            
+            cached_candidates = self.db.get_search_cache(query_hash)
+            if cached_candidates:
+                tracker.record_resolution_time((asyncio.get_event_loop().time() - start_time) * 1000)
+                return {
+                    "status": "multiple_choices",
+                    "canonical_id": None,
+                    "message": "Name-only search requires human verification. Please select the correct profile.",
+                    "candidates": cached_candidates
+                }
+
             # We must fetch top candidates and return 300 Multiple Choices to force HITL Anchor selection.
             candidates = []
             results = await asyncio.gather(
@@ -102,12 +116,14 @@ class ProfileResolver:
                 
             # Sort candidates by match_score descending
             candidates.sort(key=lambda x: x["match_score"], reverse=True)
+            
+            self.db.save_search_cache(query_hash, candidates)
                 
             return {
                 "status": "multiple_choices",
                 "canonical_id": None,
                 "message": "Name-only search requires human verification. Please select the correct profile.",
-                "ambiguous_matches": candidates
+                "candidates": candidates
             }
 
         # Phase 2: Iterative Graph Crawler Loop (max 3 iterations)
