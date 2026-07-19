@@ -82,6 +82,7 @@ export default function DashboardTab() {
   });
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(null);
+  const [selectedCandidates, setSelectedCandidates] = useState({});
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -140,6 +141,60 @@ export default function DashboardTab() {
       setResult(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleCandidate = (platform, handle) => {
+    setSelectedCandidates(prev => {
+      const newSel = { ...prev };
+      if (newSel[platform] === handle) {
+        delete newSel[platform]; // toggle off
+      } else {
+        newSel[platform] = handle; // toggle on (replaces previous choice for this platform)
+      }
+      return newSel;
+    });
+  };
+
+  const handleProceedWithSelected = async () => {
+    if (Object.keys(selectedCandidates).length === 0) return;
+    
+    const updatedFormData = { ...formData, ...selectedCandidates };
+    setFormData(updatedFormData);
+    setSelectedCandidates({});
+    
+    setLoading(true);
+    setActivePhase(0);
+    setError(null);
+    setResult(null);
+
+    try {
+      const res = await fetch('http://localhost:8080/profiles/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFormData)
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Resolution failed');
+
+      if (data.status === 'multiple_choices') {
+        setResult({ type: 'disambiguation', data });
+      } else {
+        setResult({ type: 'success', data });
+        fetchCanonical(data.canonical_id);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSkip = () => {
+    if (result.data.canonical_id) {
+      setResult({ type: 'success', data: result.data });
+      fetchCanonical(result.data.canonical_id);
     }
   };
 
@@ -325,16 +380,40 @@ export default function DashboardTab() {
             <div className="glass-panel animate-fade-in" style={{ padding: '24px', border: '1px solid #FFCC00', display: 'flex', flexDirection: 'column', maxHeight: '850px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2>⚠️ Multiple Choices Detected</h2>
-                <button
-                  onClick={() => setResult(null)}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  onClick={() => {
+                    setResult(null);
+                    setSelectedCandidates({});
+                  }} 
                   style={{ background: 'transparent', border: '1px solid var(--danger-color)', color: 'var(--danger-color)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
                 >
                   Cancel / Clear
                 </button>
               </div>
+              </div>
               <p style={{ marginBottom: '16px', marginTop: '8px' }}>
-                {result.data.message || 'Multiple profiles match this identity. Please select the correct one or review pending links in the Admin Tab.'}
+                {result.data.message || 'Multiple profiles match this identity. Please select the correct one(s) or skip.'}
               </p>
+
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', alignItems: 'center' }}>
+                <button
+                  onClick={handleProceedWithSelected}
+                  disabled={Object.keys(selectedCandidates).length === 0}
+                  className="btn-primary"
+                  style={{ opacity: Object.keys(selectedCandidates).length === 0 ? 0.5 : 1, cursor: Object.keys(selectedCandidates).length === 0 ? 'not-allowed' : 'pointer' }}
+                >
+                  Proceed with Selected ({Object.keys(selectedCandidates).length})
+                </button>
+                {result.data.canonical_id && (
+                  <button
+                    onClick={handleSkip}
+                    style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-primary)', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Skip & View Profile
+                  </button>
+                )}
+              </div>
 
               {result.data.candidates.filter(c => c.match_score > 0).length === 1 && countdown !== null && (
                 <div style={{ background: 'rgba(40,199,111,0.1)', border: '1px solid var(--success-color)', padding: '8px 12px', borderRadius: '6px', marginBottom: '16px', color: 'var(--success-color)', fontWeight: 600 }}>
@@ -377,11 +456,15 @@ export default function DashboardTab() {
                             </span>
                           )}
                           <button
-                            onClick={() => handleSelectCandidate(c.platform, c.handle)}
-                            className="btn-primary"
-                            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                            onClick={() => handleToggleCandidate(c.platform, c.handle)}
+                            style={{ 
+                              padding: '6px 12px', fontSize: '0.85rem', fontWeight: 600, borderRadius: '6px', cursor: 'pointer',
+                              background: selectedCandidates[c.platform] === c.handle ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)',
+                              color: selectedCandidates[c.platform] === c.handle ? '#fff' : 'var(--text-primary)',
+                              border: 'none', transition: 'all 0.2s'
+                            }}
                           >
-                            Select & Crawl
+                            {selectedCandidates[c.platform] === c.handle ? 'Selected ✓' : 'Select'}
                           </button>
                         </div>
                       </div>
