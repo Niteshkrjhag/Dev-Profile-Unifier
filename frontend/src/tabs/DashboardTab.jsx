@@ -8,6 +8,7 @@ export default function DashboardTab() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [countdown, setCountdown] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -84,10 +85,18 @@ export default function DashboardTab() {
       const exactMatches = candidates.filter(c => c.match_score > 0);
       if (exactMatches.length === 1) {
         const match = exactMatches[0];
-        const timer = setTimeout(() => {
-          handleSelectCandidate(match.platform, match.handle);
-        }, 3000);
-        return () => clearTimeout(timer);
+        setCountdown(3);
+        const interval = setInterval(() => {
+          setCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              handleSelectCandidate(match.platform, match.handle);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        return () => clearInterval(interval);
       }
     }
   }, [result]);
@@ -207,9 +216,9 @@ export default function DashboardTab() {
                 {result.data.message || 'Multiple profiles match this identity. Please select the correct one or review pending links in the Admin Tab.'}
               </p>
               
-              {result.data.candidates.filter(c => c.match_score > 0).length === 1 && (
+              {result.data.candidates.filter(c => c.match_score > 0).length === 1 && countdown !== null && (
                 <div style={{ background: 'rgba(40,199,111,0.1)', border: '1px solid var(--success-color)', padding: '8px 12px', borderRadius: '6px', marginBottom: '16px', color: 'var(--success-color)', fontWeight: 600 }}>
-                  Exact Match found! Auto-selecting in 3 seconds...
+                  Exact Match found! Auto-selecting in {countdown} seconds...
                 </div>
               )}
               <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
