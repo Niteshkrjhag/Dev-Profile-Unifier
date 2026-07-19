@@ -12,9 +12,13 @@ function MermaidDiagram({ chart }) {
   
   useEffect(() => {
     if (ref.current) {
-      mermaid.render('mermaid-svg-' + Math.random().toString(36).substring(7), chart).then((result) => {
-        ref.current.innerHTML = result.svg;
-      });
+      try {
+        mermaid.render('mermaid-svg-' + Math.random().toString(36).substring(7), chart).then((result) => {
+          ref.current.innerHTML = result.svg;
+        }).catch(e => console.error("Mermaid error:", e));
+      } catch (e) {
+        console.error("Mermaid sync error:", e);
+      }
     }
   }, [chart]);
 
@@ -22,38 +26,38 @@ function MermaidDiagram({ chart }) {
 }
 
 export default function DocsTab() {
-  const diagram = `
+  const diagram = \`
     graph TD
       A[Client Request] --> B{Exact Handles Provided?}
-      B -- No (Name Only) --> C[Phase 1a: Name Search]
-      C --> D[Return 300 Multiple Choices]
+      B -- No --> C[Phase 1a: Name Search]
+      C --> D[Return 300 Choices]
       D --> E[User Selects Match]
       
       B -- Yes --> F[Phase 0: Cache Check]
       E --> F
       
-      F --> G{Canonical Profile Exists?}
+      F --> G{Cached?}
       G -- Yes --> H[Return Profile]
-      G -- No --> I[Phase 2: Iterative Graph Crawler]
+      G -- No --> I[Phase 2: Graph Crawler]
       
-      I --> J[Fetch Available Profiles]
-      J --> K[Parse Bio/Links for other platforms]
-      K --> L{New Links Found?}
-      L -- Yes (Max 3 Iterations) --> J
+      I --> J[Fetch Profiles]
+      J --> K[Parse Bio for Links]
+      K --> L{New Links?}
+      L -- Yes --> J
       
-      L -- No --> M[Phase 3a: Deterministic Linking]
-      M --> N{Missing Platforms?}
+      L -- No --> M[Phase 3a: Deterministic]
+      M --> N{Missing?}
       
       N -- Yes --> O[Phase 3b: Fallback Search]
-      O --> P[Gemini 3.5 LLM Tiebreaker]
-      P -- "Confidence > 0.85" --> Q[Auto-Merge]
-      P -- "Confidence > 0.50" --> R[Pending Admin Review]
-      P -- "Confidence < 0.50" --> S[Rejected]
+      O --> P[Gemini Tiebreaker]
+      P -->|> 0.85| Q[Auto-Merge]
+      P -->|> 0.50| R[Pending Audit]
+      P -->|< 0.50| S[Rejected]
       
-      N -- No --> T[Phase 4: LLM Executive Summary]
+      N -- No --> T[Phase 4: LLM Summary]
       Q --> T
       T --> H
-  `;
+  \`;
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto' }}>
