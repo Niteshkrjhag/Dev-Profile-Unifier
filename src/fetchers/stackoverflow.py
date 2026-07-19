@@ -28,13 +28,21 @@ class StackOverflowFetcher(BaseFetcher):
         if self.key:
             params["key"] = self.key
 
-        async with httpx.AsyncClient() as client:
-            # 2. Fetch Profile
-            profile_res = await client.get(f"{self.base_url}/users/{user_id}", params=params)
-            if profile_res.status_code == 200 and profile_res.json().get("items"):
-                data["profile"] = profile_res.json()["items"][0]
-            else:
-                return {}
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # 2. Fetch Profile
+                profile_res = await client.get(f"{self.base_url}/users/{user_id}", params=params)
+                
+                # Check for backoff or rate limit
+                if profile_res.status_code == 400 and "backoff" in profile_res.text:
+                    raise Exception("StackExchange API Rate Limit (Backoff) reached. Please wait.")
+                if profile_res.status_code == 429 or profile_res.status_code == 403:
+                    raise Exception(f"StackExchange API Rate Limited ({profile_res.status_code}).")
+                    
+                if profile_res.status_code == 200 and profile_res.json().get("items"):
+                    data["profile"] = profile_res.json()["items"][0]
+                else:
+                    return {}
 
             # 3. Fetch Top Tags
             tags_res = await client.get(f"{self.base_url}/users/{user_id}/top-tags", params=params)
@@ -56,7 +64,9 @@ class StackOverflowFetcher(BaseFetcher):
                 questions = questions_res.json().get("items", [])
                 data["top_questions"] = [{"score": q["score"], "title": q["title"], "link": q["link"]} for q in questions[:5]]
 
-        return data
+            return data
+        except httpx.RequestError as e:
+            raise Exception(f"Network error connecting to StackExchange: {str(e)}")
 
     async def _search_for_user_ids(self, display_name: str) -> List[str]:
         """
@@ -71,12 +81,19 @@ class StackOverflowFetcher(BaseFetcher):
         if self.key:
             params["key"] = self.key
 
-        async with httpx.AsyncClient() as client:
-            res = await client.get(f"{self.base_url}/users", params=params)
-            if res.status_code == 200:
-                items = res.json().get("items", [])
-                return [str(item["user_id"]) for item in items[:5]]
-        return []
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                res = await client.get(f"{self.base_url}/users", params=params)
+                if res.status_code == 400 and "backoff" in res.text:
+                    raise Exception("StackExchange API Rate Limit (Backoff) reached.")
+                if res.status_code == 429 or res.status_code == 403:
+                    raise Exception(f"StackExchange API Rate Limited ({res.status_code}).")
+                if res.status_code == 200:
+                    items = res.json().get("items", [])
+                    return [str(item["user_id"]) for item in items[:5]]
+            return []
+        except httpx.RequestError as e:
+            raise Exception(f"Network error connecting to StackExchange: {str(e)}")
 
     async def search_by_name(self, name: str) -> List[Dict[str, Any]]:
         """

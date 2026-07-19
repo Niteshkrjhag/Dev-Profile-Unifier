@@ -60,10 +60,18 @@ export default function DashboardTab() {
   const fetchCanonical = async (id) => {
     try {
       const res = await fetch(`http://localhost:8080/profiles/${id}`);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Failed to fetch canonical profile');
+      }
       const profile = await res.json();
       setResult(prev => ({ ...prev, profile }));
     } catch (err) {
       console.error(err);
+      setError(err.message);
+      setResult(null);
+    } finally {
+      setLoading(false);
     }
   };
 

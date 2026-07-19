@@ -16,7 +16,7 @@ class GithubFetcher(BaseFetcher):
         data = {"handle": handle, "profile": {}, "languages": {}, "recent_activity": []}
         
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 # 1. Fetch Profile
                 res = await client.get(f"{self.base_url}/users/{handle}", headers=self.headers)
                 if res.status_code == 403:
@@ -65,7 +65,7 @@ class GithubFetcher(BaseFetcher):
         query = f"{name} in:name"
         candidates = []
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 res = await client.get(f"{self.base_url}/search/users?q={query}&per_page=5", headers=self.headers)
                 if res.status_code == 403:
                     raise Exception("GitHub API Rate Limited (403).")

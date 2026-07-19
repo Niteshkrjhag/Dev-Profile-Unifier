@@ -12,30 +12,35 @@ class HackerNewsFetcher(BaseFetcher):
         """
         data = {"handle": handle, "profile": {}, "recent_items": []}
         
-        async with httpx.AsyncClient() as client:
-            # Algolia provides a single endpoint for items authored by a user
-            res = await client.get(f"{self.base_url}/search_by_date?tags=author_{handle}&hitsPerPage=20")
-            if res.status_code == 200:
-                hits = res.json().get("hits", [])
-                if not hits:
-                    return {} # User not found or has no activity
-                
-                parsed_items = []
-                for h in hits:
-                    item_type = h.get("_tags", ["unknown"])[0] if h.get("_tags") else "unknown"
-                    parsed_items.append({
-                        "type": item_type,
-                        "title": h.get("title") or h.get("story_title"),
-                        "text": h.get("comment_text")[:200] if h.get("comment_text") else None,
-                        "created_at": h.get("created_at"),
-                        "points": h.get("points")
-                    })
-                
-                data["recent_items"] = parsed_items
-                # Fake a profile since HN Algolia doesn't provide rich user bios
-                data["profile"] = {"username": handle, "activity_count": len(hits)}
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # Algolia provides a single endpoint for items authored by a user
+                res = await client.get(f"{self.base_url}/search_by_date?tags=author_{handle}&hitsPerPage=20")
+                if res.status_code == 429 or res.status_code == 403:
+                    raise Exception(f"HackerNews API Rate Limited ({res.status_code}).")
+                if res.status_code == 200:
+                    hits = res.json().get("hits", [])
+                    if not hits:
+                        return {} # User not found or has no activity
+                    
+                    parsed_items = []
+                    for h in hits:
+                        item_type = h.get("_tags", ["unknown"])[0] if h.get("_tags") else "unknown"
+                        parsed_items.append({
+                            "type": item_type,
+                            "title": h.get("title") or h.get("story_title"),
+                            "text": h.get("comment_text")[:200] if h.get("comment_text") else None,
+                            "created_at": h.get("created_at"),
+                            "points": h.get("points")
+                        })
+                    
+                    data["recent_items"] = parsed_items
+                    # Fake a profile since HN Algolia doesn't provide rich user bios
+                    data["profile"] = {"username": handle, "activity_count": len(hits)}
 
-        return data
+            return data
+        except httpx.RequestError as e:
+            raise Exception(f"Network error connecting to HackerNews: {str(e)}")
 
     async def search_by_name(self, name: str) -> List[Dict[str, Any]]:
         """
