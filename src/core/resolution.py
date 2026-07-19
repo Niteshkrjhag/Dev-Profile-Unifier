@@ -3,7 +3,7 @@ import re
 import hashlib
 from typing import Dict, Any, List
 from src.core.supabase_client import SupabaseDB
-from src.llm.summarizer import LLMService
+from src.llm.summarizer import LLMService, LLMConfigurationError
 from src.core.observability import tracker
 
 from src.fetchers.github import GithubFetcher
@@ -64,14 +64,14 @@ class ProfileResolver:
 
         # Phase 0: Cache Check
         for platform, handle in handles.items():
-            cached_id = self.db.find_canonical_by_handle(platform, handle)
+            cached_id = await asyncio.to_thread(self.db.find_canonical_by_handle, platform, handle)
             if cached_id:
                 # Self-healing: if the cached profile is missing its LLM summary, generate it now
-                profile = self.db.get_full_canonical_profile(cached_id)
+                profile = await asyncio.to_thread(self.db.get_full_canonical_profile, cached_id)
                 if profile and not profile.get("llm_summary"):
-                    summary_text, tokens = self.llm.generate_summary(str(profile))
+                    summary_text, tokens = await self.llm.generate_summary(str(profile))
                     tracker.record_llm_usage(tokens)
-                    self.db.update_canonical_summary(cached_id, summary_text)
+                    await asyncio.to_thread(self.db.update_canonical_summary, cached_id, summary_text)
                     
                 tracker.record_resolution_time((asyncio.get_event_loop().time() - start_time) * 1000)
                 return {"status": "success", "canonical_id": cached_id}
@@ -81,7 +81,7 @@ class ProfileResolver:
             query_str = f"{name.lower()}|{str(user_metadata).lower() if user_metadata else ''}"
             query_hash = hashlib.md5(query_str.encode()).hexdigest()
             
-            cached_candidates = self.db.get_search_cache(query_hash)
+            cached_candidates = await asyncio.to_thread(self.db.get_search_cache, query_hash)
             if cached_candidates:
                 tracker.record_resolution_time((asyncio.get_event_loop().time() - start_time) * 1000)
                 return {
@@ -131,7 +131,7 @@ class ProfileResolver:
             # Sort candidates by match_score descending
             candidates.sort(key=lambda x: x["match_score"], reverse=True)
             
-            self.db.save_search_cache(query_hash, candidates)
+            await asyncio.to_thread(self.db.save_search_cache, query_hash, candidates)
                 
             if mode == 'autonomous' and candidates:
                 # Auto-select highest scored candidate and skip human verification
@@ -148,6 +148,7 @@ class ProfileResolver:
         # Phase 2: Iterative Graph Crawler Loop (max 3 iterations)
         current_handles = handles.copy()
         fetched_profiles = {}  # platform -> raw_data dict
+        failed_platforms = set()
         iteration = 0
         depth_map = {'lighter': 1, 'normal': 3, 'deeper': 5}
         max_iterations = depth_map.get(depth, 3)
@@ -159,7 +160,7 @@ class ProfileResolver:
             platforms_to_fetch = []
             
             for platform, handle in current_handles.items():
-                if platform not in fetched_profiles:
+                if platform not in fetched_profiles and platform not in failed_platforms:
                     # Fix Flaw B: Synchronous DB call in async loop
                     cached_data = await asyncio.to_thread(self.db.get_raw_profile, platform, handle)
                     if cached_data:
@@ -177,6 +178,7 @@ class ProfileResolver:
             for platform, data in zip(platforms_to_fetch, results):
                 if isinstance(data, Exception):
                     resolution_warnings.append(f"{platform} Phase 2 failed: {str(data)}")
+                    failed_platforms.add(platform)
                     continue
                 if data:
                     fetched_profiles[platform] = data
@@ -195,19 +197,19 @@ class ProfileResolver:
         # Store all fetched profiles as Raw Profiles
         raw_ids = {}
         for platform, data in fetched_profiles.items():
-            raw_ids[platform] = self.db.insert_raw_profile(platform, data.get("handle", "unknown"), data)
+            raw_ids[platform] = await asyncio.to_thread(self.db.insert_raw_profile, platform, data.get("handle", "unknown"), data)
 
         # Create Canonical Entity Container
         base_platform = list(fetched_profiles.keys())[0]
         # Try to extract a real name from the platform's profile data
         extracted_name = fetched_profiles[base_platform].get("profile", {}).get("name")
         canonical_name = name or extracted_name or fetched_profiles[base_platform].get("handle", "Unknown User")
-        canonical_id = self.db.create_canonical_entity(canonical_name)
+        canonical_id = await asyncio.to_thread(self.db.create_canonical_entity, canonical_name)
 
         # Phase 3a: Deterministic Graph Resolution
         for platform, raw_id in raw_ids.items():
             reason = "explicit_handle" if platform in handles else "graph_traversal_extraction"
-            self.db.link_profile(canonical_id, raw_id, 1.0, reason, "confirmed")
+            await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, 1.0, reason, "confirmed")
 
         # Phase 3b: Fallback Name Search for missing orphans
         ambiguous_matches = []
@@ -224,22 +226,29 @@ class ProfileResolver:
                     continue
                 for candidate_data in candidates:
                     cand_handle = candidate_data.get("handle", "unknown")
-                    raw_id = self.db.insert_raw_profile(platform, cand_handle, candidate_data)
+                    raw_id = await asyncio.to_thread(self.db.insert_raw_profile, platform, cand_handle, candidate_data)
                     
                     # LLM Tiebreaker
-                    is_match, conf, reason_text, tokens = self.llm.tiebreaker_resolution(base_data, candidate_data, user_metadata)
-                    tracker.record_llm_usage(tokens)
+                    try:
+                        is_match, conf, reason_text, tokens = await self.llm.tiebreaker_resolution(base_data, candidate_data, user_metadata)
+                        tracker.record_llm_usage(tokens)
+                    except LLMConfigurationError as e:
+                        resolution_warnings.append(str(e))
+                        is_match, conf = False, 0.0
+                        reason_text = "LLM tiebreaker unavailable - requires manual review"
                     
                     if len(reason_text) > 250:
                         reason_text = reason_text[:247] + "..."
                         
                     if mode == 'autonomous' and conf >= 0.85:
-                        self.db.link_profile(canonical_id, raw_id, conf, reason_text, "confirmed")
+                        await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, conf, reason_text, "confirmed")
                         fetched_profiles[platform] = candidate_data
                         break # Stop checking other candidates for this platform
                     else:
-                        link_status = "pending_review" if conf >= 0.5 else "rejected"
-                        self.db.link_profile(canonical_id, raw_id, conf, reason_text, link_status)
+                        link_status = "pending_review" if conf >= 0.5 or not self.llm.client else "rejected"
+                        if reason_text == "LLM tiebreaker unavailable - requires manual review":
+                            link_status = "pending_review"
+                        await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, conf, reason_text, link_status)
                         if conf >= 0.5:
                             ambiguous_matches.append({
                                 "platform": platform,
@@ -252,11 +261,11 @@ class ProfileResolver:
                             })
 
         # Generate LLM Summary based on confirmed links
-        final_profile = self.db.get_full_canonical_profile(canonical_id)
+        final_profile = await asyncio.to_thread(self.db.get_full_canonical_profile, canonical_id)
         if final_profile:
-            summary_text, tokens = self.llm.generate_summary(str(final_profile))
+            summary_text, tokens = await self.llm.generate_summary(str(final_profile))
             tracker.record_llm_usage(tokens)
-            self.db.update_canonical_summary(canonical_id, summary_text)
+            await asyncio.to_thread(self.db.update_canonical_summary, canonical_id, summary_text)
 
         end_time = asyncio.get_event_loop().time()
         tracker.record_resolution_time((end_time - start_time) * 1000)

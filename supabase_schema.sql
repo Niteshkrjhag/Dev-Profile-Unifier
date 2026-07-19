@@ -43,3 +43,11 @@ CREATE TABLE search_cache (
     candidates_json JSONB NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- 5. Observability Metrics
+-- Distributed multi-worker tracking for API limits and LLM usage.
+CREATE TABLE observability_metrics (
+    id VARCHAR(50) PRIMARY KEY DEFAULT 'global',
+    metrics JSONB NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);

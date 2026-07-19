@@ -9,6 +9,9 @@ class EntityResolutionOutput(BaseModel):
     confidence: float
     reason: str
 
+class LLMConfigurationError(Exception):
+    pass
+
 class LLMService:
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY")
@@ -16,13 +19,13 @@ class LLMService:
         # Use 3.5-flash as per environment specs
         self.model_name = "gemini-3.5-flash"
 
-    def tiebreaker_resolution(self, profile1: dict, profile2: dict, user_metadata: dict = None) -> Tuple[bool, float, str, int]:
+    async def tiebreaker_resolution(self, profile1: dict, profile2: dict, user_metadata: dict = None) -> Tuple[bool, float, str, int]:
         """
         Uses Gemini to determine if two raw profiles belong to the same person.
         Returns: (is_match, confidence_score, reason, tokens_used)
         """
         if not self.client:
-            return False, 0.0, "No API key configured", 0
+            raise LLMConfigurationError("No API key configured for Gemini LLM tiebreaker.")
 
         metadata_instruction = ""
         if user_metadata:
@@ -54,8 +57,8 @@ class LLMService:
         """
         
         try:
-            # We configure Gemini to return JSON
-            response = self.client.models.generate_content(
+            # We configure Gemini to return JSON using async client
+            response = await self.client.aio.models.generate_content(
                 model=self.model_name,
                 contents=prompt,
                 config=genai.types.GenerateContentConfig(
@@ -79,7 +82,7 @@ class LLMService:
         except Exception as e:
             return False, 0.0, f"Error calling Gemini: {str(e)}", 0
 
-    def generate_summary(self, unified_data: str) -> Tuple[str, int]:
+    async def generate_summary(self, unified_data: str) -> Tuple[str, int]:
         """
         Generates a 1-paragraph summary of a developer based on their unified data.
         Returns: (summary_string, tokens_used)
@@ -111,7 +114,7 @@ class LLMService:
         """
         
         try:
-            response = self.client.models.generate_content(
+            response = await self.client.aio.models.generate_content(
                 model=self.model_name,
                 contents=prompt
             )
