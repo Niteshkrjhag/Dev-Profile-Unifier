@@ -53,6 +53,8 @@ class ResolveRequest(BaseModel):
     workplace: Optional[str] = None
     gender: Optional[str] = None
     profession_status: Optional[str] = None
+    mode: str = 'transparent'
+    depth: str = 'normal'
 
 @app.get("/health")
 async def health_check():
@@ -91,7 +93,13 @@ async def resolve_profile(payload: ResolveRequest):
     user_metadata = {k: v for k, v in user_metadata.items() if v}
     
     try:
-        result = await resolver.resolve_and_store(payload.name, handles, user_metadata)
+        result = await resolver.resolve_and_store(
+            name=payload.name, 
+            handles=handles, 
+            user_metadata=user_metadata, 
+            mode=payload.mode, 
+            depth=payload.depth
+        )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"External API Error: {str(e)}")
     
@@ -101,7 +109,7 @@ async def resolve_profile(payload: ResolveRequest):
             "status": "multiple_choices",
             "message": result["message"],
             "canonical_id": result["canonical_id"],
-            "candidates": result["candidates"]
+            "candidates": result.get("candidates", result.get("ambiguous_matches", []))
         }
         
     if result["status"] == "error":

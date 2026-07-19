@@ -48,7 +48,7 @@ class ProfileResolver:
             
         return extracted
 
-    async def resolve_and_store(self, name: str, handles: dict, user_metadata: dict = None) -> Dict[str, Any]:
+    async def resolve_and_store(self, name: str, handles: dict, user_metadata: dict = None, mode: str = 'transparent', depth: str = 'normal') -> Dict[str, Any]:
         """
         Executes the Iterative Graph Crawler & LLM Tiebreaker resolution pipeline.
         Returns Canonical ID or 300 Multiple Choices if disambiguation is needed.
@@ -119,18 +119,24 @@ class ProfileResolver:
             
             self.db.save_search_cache(query_hash, candidates)
                 
-            return {
-                "status": "multiple_choices",
-                "canonical_id": None,
-                "message": "Name-only search requires human verification. Please select the correct profile.",
-                "candidates": candidates
-            }
+            if mode == 'autonomous' and candidates:
+                # Auto-select highest scored candidate and skip human verification
+                top_cand = candidates[0]
+                handles[top_cand["platform"]] = top_cand["handle"]
+            else:
+                return {
+                    "status": "multiple_choices",
+                    "canonical_id": None,
+                    "message": "Name-only search requires human verification. Please select the correct profile.",
+                    "candidates": candidates
+                }
 
         # Phase 2: Iterative Graph Crawler Loop (max 3 iterations)
         current_handles = handles.copy()
         fetched_profiles = {}  # platform -> raw_data dict
         iteration = 0
-        max_iterations = 3
+        depth_map = {'lighter': 1, 'normal': 3, 'deeper': 5}
+        max_iterations = depth_map.get(depth, 3)
         
         while iteration < max_iterations:
             iteration += 1
@@ -207,21 +213,23 @@ class ProfileResolver:
                     if len(reason_text) > 250:
                         reason_text = reason_text[:247] + "..."
                         
-                    if conf >= 0.85:
+                    if mode == 'autonomous' and conf >= 0.85:
                         self.db.link_profile(canonical_id, raw_id, conf, reason_text, "confirmed")
                         fetched_profiles[platform] = candidate_data
                         break # Stop checking other candidates for this platform
-                    elif conf >= 0.5:
-                        self.db.link_profile(canonical_id, raw_id, conf, reason_text, "pending_review")
-                        ambiguous_matches.append({
-                            "platform": platform,
-                            "handle": cand_handle,
-                            "confidence": conf,
-                            "reason": reason_text,
-                            "raw_id": raw_id
-                        })
                     else:
-                        self.db.link_profile(canonical_id, raw_id, conf, reason_text, "rejected")
+                        link_status = "pending_review" if conf >= 0.5 else "rejected"
+                        self.db.link_profile(canonical_id, raw_id, conf, reason_text, link_status)
+                        if conf >= 0.5:
+                            ambiguous_matches.append({
+                                "platform": platform,
+                                "handle": cand_handle,
+                                "confidence": conf,
+                                "reason": reason_text,
+                                "raw_id": raw_id,
+                                "data": candidate_data,
+                                "match_score": 0 # For frontend compatibility
+                            })
 
         # Generate LLM Summary based on confirmed links
         final_profile = self.db.get_full_canonical_profile(canonical_id)
@@ -237,7 +245,7 @@ class ProfileResolver:
             return {
                 "status": "multiple_choices",
                 "canonical_id": canonical_id,
-                "message": "Graph traversal succeeded, but some missing platforms required LLM fallback and are pending review.",
+                "message": f"Graph traversal succeeded, but we found {len(ambiguous_matches)} potential matches via LLM Fallback Search. Please review and manually select one.",
                 "ambiguous_matches": ambiguous_matches
             }
 
