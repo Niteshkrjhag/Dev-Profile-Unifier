@@ -132,10 +132,10 @@ export default function DashboardTab() {
 
   return (
     <div className="animate-fade-in">
-      <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1>Advanced Profile Discovery</h1>
-          <p>Enter a developer's information and metadata to accurately resolve their identity.</p>
+          <h1 style={{ marginBottom: '4px' }}>Advanced Profile Discovery</h1>
+          <p style={{ margin: 0, fontSize: '0.9rem' }}>Enter a developer's information and metadata to accurately resolve their identity.</p>
         </div>
         <button 
           onClick={() => setIsSettingsOpen(true)}
@@ -162,31 +162,32 @@ export default function DashboardTab() {
 
       <div style={{ display: 'flex', gap: '40px' }}>
         <div style={{ flex: 1, maxWidth: '450px' }}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Full Name (Mandatory)</label>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.9rem', fontWeight: 500 }}>Full Name (Mandatory)</label>
               <input
                 required
                 placeholder="e.g. Karan Maheswari"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                style={{ padding: '8px 12px' }}
               />
             </div>
 
-            <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '8px 0' }}></div>
-            <p style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>OPTIONAL METADATA</p>
+            <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '4px 0' }}></div>
+            <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>OPTIONAL METADATA</p>
 
-            <input placeholder="Location (e.g. San Francisco)" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} />
-            <input placeholder="Workplace / Company" value={formData.workplace} onChange={(e) => setFormData({ ...formData, workplace: e.target.value })} />
+            <input placeholder="Location (e.g. San Francisco)" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} style={{ padding: '8px 12px' }} />
+            <input placeholder="Workplace / Company" value={formData.workplace} onChange={(e) => setFormData({ ...formData, workplace: e.target.value })} style={{ padding: '8px 12px' }} />
 
-            <select value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })} style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.5)', width: '100%' }}>
+            <select value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.5)', width: '100%' }}>
               <option value="">Select Gender...</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
               <option value="Other">Other</option>
             </select>
 
-            <div style={{ display: 'flex', gap: '16px', fontSize: '0.9rem' }}>
+            <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input type="radio" name="status" value="student" checked={formData.profession_status === 'student'} onChange={(e) => setFormData({ ...formData, profession_status: e.target.value })} />
                 Student
@@ -197,15 +198,15 @@ export default function DashboardTab() {
               </label>
             </div>
 
-            <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '8px 0' }}></div>
-            <p style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>OPTIONAL EXACT HANDLES</p>
+            <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '4px 0' }}></div>
+            <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>OPTIONAL EXACT HANDLES</p>
 
-            <input placeholder="GitHub Handle" value={formData.github} onChange={(e) => setFormData({ ...formData, github: e.target.value })} />
-            <input placeholder="StackOverflow Handle or ID" value={formData.stackoverflow} onChange={(e) => setFormData({ ...formData, stackoverflow: e.target.value })} />
-            <input placeholder="Dev.to Username" value={formData.devto} onChange={(e) => setFormData({ ...formData, devto: e.target.value })} />
-            <input placeholder="HackerNews Handle" value={formData.hackernews} onChange={(e) => setFormData({ ...formData, hackernews: e.target.value })} />
+            <input placeholder="GitHub Handle" value={formData.github} onChange={(e) => setFormData({ ...formData, github: e.target.value })} style={{ padding: '8px 12px' }} />
+            <input placeholder="StackOverflow Handle or ID" value={formData.stackoverflow} onChange={(e) => setFormData({ ...formData, stackoverflow: e.target.value })} style={{ padding: '8px 12px' }} />
+            <input placeholder="Dev.to Username" value={formData.devto} onChange={(e) => setFormData({ ...formData, devto: e.target.value })} style={{ padding: '8px 12px' }} />
+            <input placeholder="HackerNews Handle" value={formData.hackernews} onChange={(e) => setFormData({ ...formData, hackernews: e.target.value })} style={{ padding: '8px 12px' }} />
 
-            <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: '16px' }}>
+            <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: '8px', padding: '10px' }}>
               {loading ? 'Running Resolution Engine...' : 'Search & Unify'}
             </button>
           </form>
@@ -364,23 +365,23 @@ export default function DashboardTab() {
       {/* Premium Settings Modal */}
       {isSettingsOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(12px)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={() => setIsSettingsOpen(false)}>
-          <div style={{ background: '#ffffff', padding: '32px', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', width: '90%', maxWidth: '600px', animation: 'fadeInUp 0.3s ease' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', color: '#111' }}>⚙️ Engine Configuration</h2>
+          <div style={{ background: '#ffffff', padding: '24px', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', width: '90%', maxWidth: '600px', animation: 'fadeInUp 0.3s ease' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', color: '#111', fontSize: '1.4rem' }}>⚙️ Engine Configuration</h2>
               <button onClick={() => setIsSettingsOpen(false)} style={{ background: 'transparent', border: 'none', color: '#666', fontSize: '1.8rem', cursor: 'pointer', lineHeight: 1 }}>&times;</button>
             </div>
 
-            <div style={{ marginBottom: '28px' }}>
-              <h3 style={{ fontSize: '0.9rem', letterSpacing: '1px', textTransform: 'uppercase', color: '#666', marginBottom: '16px' }}>Operational Mode</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '0.85rem', letterSpacing: '1px', textTransform: 'uppercase', color: '#666', marginBottom: '10px' }}>Operational Mode</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div 
                   onClick={() => { if(formData.depth !== 'lighter') setFormData({...formData, mode: 'transparent'}) }}
-                  style={{ padding: '20px', borderRadius: '12px', border: formData.mode === 'transparent' ? '2px solid var(--success-color)' : '1px solid rgba(0,0,0,0.1)', background: formData.mode === 'transparent' ? 'rgba(40,199,111,0.05)' : '#f8f9fa', cursor: formData.depth === 'lighter' ? 'not-allowed' : 'pointer', opacity: formData.depth === 'lighter' ? 0.5 : 1, transition: 'all 0.2s', display: 'flex', alignItems: 'flex-start', gap: '16px' }}
+                  style={{ padding: '12px', borderRadius: '12px', border: formData.mode === 'transparent' ? '2px solid var(--success-color)' : '1px solid rgba(0,0,0,0.1)', background: formData.mode === 'transparent' ? 'rgba(40,199,111,0.05)' : '#f8f9fa', cursor: formData.depth === 'lighter' ? 'not-allowed' : 'pointer', opacity: formData.depth === 'lighter' ? 0.5 : 1, transition: 'all 0.2s', display: 'flex', alignItems: 'flex-start', gap: '12px' }}
                 >
                   <input type="radio" checked={formData.mode === 'transparent'} readOnly style={{ accentColor: 'var(--success-color)', marginTop: '4px' }} />
                   <div>
-                    <strong style={{ color: formData.mode === 'transparent' ? 'var(--success-color)' : '#333', display: 'block', fontSize: '1.1rem', marginBottom: '6px' }}>Transparent (Human-in-the-Loop)</strong>
-                    <p style={{ fontSize: '0.9rem', color: '#666', margin: 0, lineHeight: '1.5' }}>
+                    <strong style={{ color: formData.mode === 'transparent' ? 'var(--success-color)' : '#333', display: 'block', fontSize: '1rem', marginBottom: '4px' }}>Transparent (Human-in-the-Loop)</strong>
+                    <p style={{ fontSize: '0.85rem', color: '#666', margin: 0, lineHeight: '1.4' }}>
                       Phase 1 exact matches and Phase 3 LLM fallbacks will pause the engine and require your manual verification. Recommended for precise auditing.
                     </p>
                   </div>
@@ -388,12 +389,12 @@ export default function DashboardTab() {
                 
                 <div 
                   onClick={() => setFormData({...formData, mode: 'autonomous'})}
-                  style={{ padding: '20px', borderRadius: '12px', border: formData.mode === 'autonomous' ? '2px solid var(--accent-color)' : '1px solid rgba(0,0,0,0.1)', background: formData.mode === 'autonomous' ? 'rgba(115,103,240,0.05)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'flex-start', gap: '16px' }}
+                  style={{ padding: '12px', borderRadius: '12px', border: formData.mode === 'autonomous' ? '2px solid var(--accent-color)' : '1px solid rgba(0,0,0,0.1)', background: formData.mode === 'autonomous' ? 'rgba(115,103,240,0.05)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'flex-start', gap: '12px' }}
                 >
                   <input type="radio" checked={formData.mode === 'autonomous'} readOnly style={{ accentColor: 'var(--accent-color)', marginTop: '4px' }} />
                   <div>
-                    <strong style={{ color: formData.mode === 'autonomous' ? 'var(--accent-color)' : '#333', display: 'block', fontSize: '1.1rem', marginBottom: '6px' }}>Autonomous (AI Auto-Merge)</strong>
-                    <p style={{ fontSize: '0.9rem', color: '#666', margin: 0, lineHeight: '1.5' }}>
+                    <strong style={{ color: formData.mode === 'autonomous' ? 'var(--accent-color)' : '#333', display: 'block', fontSize: '1rem', marginBottom: '4px' }}>Autonomous (AI Auto-Merge)</strong>
+                    <p style={{ fontSize: '0.85rem', color: '#666', margin: 0, lineHeight: '1.4' }}>
                       The engine will automatically merge the highest scoring candidates and seamlessly proceed without human intervention. Highly efficient.
                     </p>
                   </div>
@@ -402,39 +403,39 @@ export default function DashboardTab() {
             </div>
 
             <div>
-              <h3 style={{ fontSize: '0.9rem', letterSpacing: '1px', textTransform: 'uppercase', color: '#666', marginBottom: '16px' }}>Crawl Depth Limit</h3>
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <h3 style={{ fontSize: '0.85rem', letterSpacing: '1px', textTransform: 'uppercase', color: '#666', marginBottom: '10px' }}>Crawl Depth Limit</h3>
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <div 
                   onClick={() => setFormData({...formData, depth: 'lighter', mode: 'autonomous'})}
-                  style={{ flex: 1, padding: '16px', borderRadius: '12px', border: formData.depth === 'lighter' ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)', background: formData.depth === 'lighter' ? 'rgba(0,0,0,0.03)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
+                  style={{ flex: 1, padding: '12px', borderRadius: '12px', border: formData.depth === 'lighter' ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)', background: formData.depth === 'lighter' ? 'rgba(0,0,0,0.03)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
                 >
-                  <strong style={{ fontSize: '1.05rem', color: '#333', marginBottom: '6px' }}>Lighter</strong>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 600, marginBottom: '12px' }}>1 Iteration</div>
-                  <p style={{ fontSize: '0.8rem', color: '#666', margin: 0, lineHeight: '1.4', flex: 1 }}>Fastest search. Forces Autonomous Mode.</p>
+                  <strong style={{ fontSize: '0.95rem', color: '#333', marginBottom: '4px' }}>Lighter</strong>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--accent-color)', fontWeight: 600, marginBottom: '6px' }}>1 Iteration</div>
+                  <p style={{ fontSize: '0.75rem', color: '#666', margin: 0, lineHeight: '1.3', flex: 1 }}>Fastest search. Forces Autonomous Mode.</p>
                 </div>
                 
                 <div 
                   onClick={() => setFormData({...formData, depth: 'normal'})}
-                  style={{ flex: 1, padding: '16px', borderRadius: '12px', border: formData.depth === 'normal' ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)', background: formData.depth === 'normal' ? 'rgba(0,0,0,0.03)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
+                  style={{ flex: 1, padding: '12px', borderRadius: '12px', border: formData.depth === 'normal' ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)', background: formData.depth === 'normal' ? 'rgba(0,0,0,0.03)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
                 >
-                  <strong style={{ fontSize: '1.05rem', color: '#333', marginBottom: '6px' }}>Normal</strong>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 600, marginBottom: '12px' }}>3 Iterations</div>
-                  <p style={{ fontSize: '0.8rem', color: '#666', margin: 0, lineHeight: '1.4', flex: 1 }}>Standard depth. Balances speed with thoroughness.</p>
+                  <strong style={{ fontSize: '0.95rem', color: '#333', marginBottom: '4px' }}>Normal</strong>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--accent-color)', fontWeight: 600, marginBottom: '6px' }}>3 Iterations</div>
+                  <p style={{ fontSize: '0.75rem', color: '#666', margin: 0, lineHeight: '1.3', flex: 1 }}>Standard depth. Balances speed with thoroughness.</p>
                 </div>
                 
                 <div 
                   onClick={() => setFormData({...formData, depth: 'deeper'})}
-                  style={{ flex: 1, padding: '16px', borderRadius: '12px', border: formData.depth === 'deeper' ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)', background: formData.depth === 'deeper' ? 'rgba(0,0,0,0.03)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
+                  style={{ flex: 1, padding: '12px', borderRadius: '12px', border: formData.depth === 'deeper' ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)', background: formData.depth === 'deeper' ? 'rgba(0,0,0,0.03)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
                 >
-                  <strong style={{ fontSize: '1.05rem', color: '#333', marginBottom: '6px' }}>Deeper</strong>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 600, marginBottom: '12px' }}>5 Iterations</div>
-                  <p style={{ fontSize: '0.8rem', color: '#666', margin: 0, lineHeight: '1.4', flex: 1 }}>Deep dive to find highly obscure profiles.</p>
+                  <strong style={{ fontSize: '0.95rem', color: '#333', marginBottom: '4px' }}>Deeper</strong>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--accent-color)', fontWeight: 600, marginBottom: '6px' }}>5 Iterations</div>
+                  <p style={{ fontSize: '0.75rem', color: '#666', margin: 0, lineHeight: '1.3', flex: 1 }}>Deep dive to find highly obscure profiles.</p>
                 </div>
               </div>
             </div>
             
-            <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => setIsSettingsOpen(false)} className="btn-primary" style={{ padding: '12px 32px', fontSize: '1rem', fontWeight: 600, borderRadius: '8px' }}>Save & Close</button>
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setIsSettingsOpen(false)} className="btn-primary" style={{ padding: '10px 24px', fontSize: '0.95rem', fontWeight: 600, borderRadius: '8px' }}>Save & Close</button>
             </div>
           </div>
         </div>
