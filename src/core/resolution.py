@@ -63,18 +63,43 @@ class ProfileResolver:
             handles = {}
 
         # Phase 0: Cache Check
+        existing_canonical_id = None
         for platform, handle in handles.items():
             cached_id = await asyncio.to_thread(self.db.find_canonical_by_handle, platform, handle)
             if cached_id:
-                # Self-healing: if the cached profile is missing its LLM summary, generate it now
-                profile = await asyncio.to_thread(self.db.get_full_canonical_profile, cached_id)
+                existing_canonical_id = cached_id
+                break
+
+        if existing_canonical_id:
+            profile = await asyncio.to_thread(self.db.get_full_canonical_profile, existing_canonical_id)
+            
+            # Check if all explicitly requested handles are already linked to this canonical profile
+            existing_platforms = {}
+            if profile and "entity_links" in profile:
+                for link in profile["entity_links"]:
+                    if link.get("status") == "confirmed" and "raw_profiles" in link:
+                        p = link["raw_profiles"]["platform"]
+                        h = link["raw_profiles"]["handle"]
+                        existing_platforms[p] = h
+
+            missing_explicit_handles = {}
+            for p, h in handles.items():
+                if p not in existing_platforms or existing_platforms[p] != h:
+                    missing_explicit_handles[p] = h
+
+            if not missing_explicit_handles:
+                # All handles are already linked! We can safely short-circuit.
                 if profile and not profile.get("llm_summary"):
                     summary_text, tokens = await self.llm.generate_summary(str(profile))
                     tracker.record_llm_usage(tokens)
-                    await asyncio.to_thread(self.db.update_canonical_summary, cached_id, summary_text)
+                    await asyncio.to_thread(self.db.update_canonical_summary, existing_canonical_id, summary_text)
                     
                 tracker.record_resolution_time((asyncio.get_event_loop().time() - start_time) * 1000)
-                return {"status": "success", "canonical_id": cached_id}
+                return {"status": "success", "canonical_id": existing_canonical_id}
+            else:
+                # New explicit handles were provided! We must NOT short circuit.
+                # Save the existing canonical_id so we can link the new profiles to it in Phase 2.
+                canonical_id = existing_canonical_id
 
         # Phase 1: Disambiguation & Smart Caching
         if not handles and name:
@@ -199,12 +224,13 @@ class ProfileResolver:
         for platform, data in fetched_profiles.items():
             raw_ids[platform] = await asyncio.to_thread(self.db.insert_raw_profile, platform, data.get("handle", "unknown"), data)
 
-        # Create Canonical Entity Container
-        base_platform = list(fetched_profiles.keys())[0]
-        # Try to extract a real name from the platform's profile data
-        extracted_name = fetched_profiles[base_platform].get("profile", {}).get("name")
-        canonical_name = name or extracted_name or fetched_profiles[base_platform].get("handle", "Unknown User")
-        canonical_id = await asyncio.to_thread(self.db.create_canonical_entity, canonical_name)
+        # Create Canonical Entity Container if it doesn't already exist
+        if not canonical_id:
+            base_platform = list(fetched_profiles.keys())[0]
+            # Try to extract a real name from the platform's profile data
+            extracted_name = fetched_profiles[base_platform].get("profile", {}).get("name")
+            canonical_name = name or extracted_name or fetched_profiles[base_platform].get("handle", "Unknown User")
+            canonical_id = await asyncio.to_thread(self.db.create_canonical_entity, canonical_name)
 
         # Bind Graph Handles (End of Phase 2)
         for platform, raw_id in raw_ids.items():
