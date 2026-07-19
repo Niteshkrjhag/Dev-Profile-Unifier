@@ -1,5 +1,6 @@
 import os
 import httpx
+import asyncio
 from typing import Dict, Any, List
 from src.core.base_fetcher import BaseFetcher
 
@@ -70,7 +71,7 @@ class StackOverflowFetcher(BaseFetcher):
 
     async def _search_for_user_ids(self, display_name: str) -> List[str]:
         """
-        Asynchronously searches for users by their exact or partial display name and returns the top 5 highest reputation user_ids.
+        Asynchronously searches for users by their exact or partial display name and returns all fetched user_ids.
         """
         params = {
             "site": self.site,
@@ -90,19 +91,25 @@ class StackOverflowFetcher(BaseFetcher):
                     raise Exception(f"StackExchange API Rate Limited ({res.status_code}).")
                 if res.status_code == 200:
                     items = res.json().get("items", [])
-                    return [str(item["user_id"]) for item in items[:5]]
+                    return [str(item["user_id"]) for item in items]
             return []
         except httpx.RequestError as e:
             raise Exception(f"Network error connecting to StackExchange: {str(e)}")
 
     async def search_by_name(self, name: str) -> List[Dict[str, Any]]:
         """
-        Asynchronously searches for a profile by name. Returns top 5 candidates.
+        Asynchronously searches for a profile by name. Returns all concurrently fetched candidates.
         """
         user_ids = await self._search_for_user_ids(name)
+        if not user_ids:
+            return []
+            
+        tasks = [self.fetch_by_handle(uid) for uid in user_ids]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
         candidates = []
-        for user_id in user_ids:
-            profile_data = await self.fetch_by_handle(user_id)
-            if profile_data:
-                candidates.append(profile_data)
+        for r in results:
+            if not isinstance(r, Exception) and r is not None:
+                candidates.append(r)
+                
         return candidates

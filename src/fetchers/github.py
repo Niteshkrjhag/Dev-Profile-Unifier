@@ -1,5 +1,6 @@
 import os
 import httpx
+import asyncio
 from typing import Dict, Any, List
 from src.core.base_fetcher import BaseFetcher
 
@@ -60,23 +61,34 @@ class GithubFetcher(BaseFetcher):
 
     async def search_by_name(self, name: str) -> List[Dict[str, Any]]:
         """
-        Asynchronously searches GitHub users by name or email. Returns top 5 candidates.
+        Asynchronously searches GitHub users by name or email. Returns all fetched candidates concurrently.
         """
         query = f"{name} in:name"
-        candidates = []
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                res = await client.get(f"{self.base_url}/search/users?q={query}&per_page=5", headers=self.headers)
+                res = await client.get(f"{self.base_url}/search/users?q={query}", headers=self.headers)
                 if res.status_code == 403:
                     raise Exception("GitHub API Rate Limited (403).")
                 if res.status_code == 200:
                     items = res.json().get("items", [])
-                    for item in items[:5]:
+                    tasks = []
+                    for item in items:
                         handle = item.get("login")
                         if handle:
-                            profile_data = await self.fetch_by_handle(handle)
-                            if profile_data:
-                                candidates.append(profile_data)
-            return candidates
+                            tasks.append(self.fetch_by_handle(handle))
+                    
+                    if not tasks:
+                        return []
+                        
+                    # Fetch all profiles concurrently
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    
+                    candidates = []
+                    for r in results:
+                        if not isinstance(r, Exception) and r is not None:
+                            candidates.append(r)
+                            
+                    return candidates
+            return []
         except httpx.RequestError as e:
             raise Exception(f"Network error connecting to GitHub: {str(e)}")
