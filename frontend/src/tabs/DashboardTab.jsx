@@ -164,39 +164,87 @@ export default function DashboardTab() {
               <p style={{ marginBottom: '16px' }}>
                 {result.data.message || 'Multiple profiles match this identity. Please select the correct one or review pending links in the Admin Tab.'}
               </p>
-              {result.data.candidates.map((c, i) => (
-                <div key={i} style={{ 
-                  background: c.match_score > 0 ? 'rgba(40,199,111,0.1)' : 'rgba(0,0,0,0.03)', 
-                  border: c.match_score > 0 ? '1px solid var(--success-color)' : 'none',
-                  padding: '12px', 
-                  borderRadius: '8px', 
-                  marginBottom: '8px' 
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <strong>{c.platform}:</strong> {c.handle} 
-                      {c.confidence !== undefined && <span style={{marginLeft: '8px', fontSize: '0.9rem'}}>(Confidence: {c.confidence})</span>}
+              {result.data.candidates.map((c, i) => {
+                const profile = c.data?.profile || {};
+                const profileUrl = c.platform === 'github' ? profile.html_url : profile.link;
+                const bioText = profile.bio || profile.about_me || '';
+                const locationText = profile.location || '';
+                const companyText = profile.company || '';
+                const reputation = profile.reputation || null;
+
+                return (
+                  <div key={i} style={{ 
+                    background: c.match_score > 0 ? 'rgba(40,199,111,0.1)' : 'rgba(0,0,0,0.03)', 
+                    border: c.match_score > 0 ? '1px solid var(--success-color)' : 'none',
+                    padding: '16px', 
+                    borderRadius: '8px', 
+                    marginBottom: '12px' 
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong style={{ fontSize: '1.05rem', textTransform: 'capitalize' }}>{c.platform}: </strong> 
+                        {profileUrl ? (
+                          <a href={profileUrl} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, color: 'var(--accent-color)', textDecoration: 'underline' }}>
+                            {c.handle} ↗
+                          </a>
+                        ) : (
+                          <span style={{ fontWeight: 600 }}>{c.handle}</span>
+                        )}
+                        {c.confidence !== undefined && <span style={{marginLeft: '8px', fontSize: '0.9rem'}}>(Confidence: {c.confidence})</span>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {c.match_score > 0 && (
+                          <span style={{ background: 'var(--success-color)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600 }}>
+                            Metadata Match!
+                          </span>
+                        )}
+                        <button 
+                          onClick={() => handleSelectCandidate(c.platform, c.handle)}
+                          className="btn-primary" 
+                          style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                        >
+                          Select & Crawl
+                        </button>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      {c.match_score > 0 && (
-                        <span style={{ background: 'var(--success-color)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600 }}>
-                          Metadata Match!
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                      {profile.name && (
+                        <span style={{ background: 'rgba(0,0,0,0.06)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 500 }}>
+                          Name: {profile.name}
                         </span>
                       )}
-                      <button 
-                        onClick={() => handleSelectCandidate(c.platform, c.handle)}
-                        className="btn-primary" 
-                        style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                      >
-                        Select & Crawl
-                      </button>
+                      {locationText && (
+                        <span style={{ background: 'rgba(0,0,0,0.06)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 500 }}>
+                          📍 {locationText}
+                        </span>
+                      )}
+                      {companyText && (
+                        <span style={{ background: 'rgba(0,0,0,0.06)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 500 }}>
+                          🏢 {companyText}
+                        </span>
+                      )}
+                      {reputation !== null && (
+                        <span style={{ background: 'rgba(0,0,0,0.06)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 500 }}>
+                          ⭐ Rep: {reputation}
+                        </span>
+                      )}
                     </div>
+
+                    {bioText && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '8px', fontStyle: 'italic', background: 'rgba(255,255,255,0.4)', padding: '8px', borderRadius: '6px' }}>
+                        "{bioText.replace(/<[^>]*>/g, '')}"
+                      </p>
+                    )}
+
+                    {c.reason && (
+                      <div style={{ fontSize: '0.85rem', color: 'var(--danger-color)', marginTop: '8px', fontWeight: 500 }}>
+                        Reason: {c.reason}
+                      </div>
+                    )}
                   </div>
-                  {c.reason && <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{c.reason}</div>}
-                  {c.data?.name && <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>Name on profile: {c.data.name}</div>}
-                  {c.data?.location && <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>Location: {c.data.location}</div>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
