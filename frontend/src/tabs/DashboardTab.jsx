@@ -48,6 +48,36 @@ export default function DashboardTab() {
     }
   };
 
+  const handleSelectCandidate = async (platform, handle) => {
+    const updatedFormData = { ...formData, [platform]: handle };
+    setFormData(updatedFormData);
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const res = await fetch('http://localhost:8080/profiles/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFormData)
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Resolution failed');
+      
+      if (data.status === 'multiple_choices') {
+        setResult({ type: 'disambiguation', data });
+      } else {
+        setResult({ type: 'success', data });
+        fetchCanonical(data.canonical_id);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="animate-fade-in">
       <div style={{ marginBottom: '32px' }}>
@@ -147,11 +177,20 @@ export default function DashboardTab() {
                       <strong>{c.platform}:</strong> {c.handle} 
                       {c.confidence !== undefined && <span style={{marginLeft: '8px', fontSize: '0.9rem'}}>(Confidence: {c.confidence})</span>}
                     </div>
-                    {c.match_score > 0 && (
-                      <span style={{ background: 'var(--success-color)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600 }}>
-                        Metadata Match!
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {c.match_score > 0 && (
+                        <span style={{ background: 'var(--success-color)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600 }}>
+                          Metadata Match!
+                        </span>
+                      )}
+                      <button 
+                        onClick={() => handleSelectCandidate(c.platform, c.handle)}
+                        className="btn-primary" 
+                        style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                      >
+                        Select & Crawl
+                      </button>
+                    </div>
                   </div>
                   {c.reason && <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{c.reason}</div>}
                   {c.data?.name && <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>Name on profile: {c.data.name}</div>}
