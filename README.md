@@ -1,138 +1,108 @@
-# Effiflo Dev Profile Unifier 🚀
+# Dev Profile Unifier
 
-![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.100.0-009688.svg)
-![React](https://img.shields.io/badge/React-18.0.0-61DAFB.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+An intelligent, cross-platform Identity Resolution Engine that aggregates and unifies a developer's digital footprint across GitHub, StackOverflow, Dev.to, and HackerNews into a single canonical entity. 
 
-A high-performance, fault-tolerant Master Data Management (MDM) system designed to ingest, resolve, and unify a software developer's digital footprint across fragmented platforms (GitHub, StackOverflow, Dev.to, and HackerNews).
-
-Built to solve the hardest challenge in data engineering: **Identity Resolution**. If a database contains a GitHub account named "Nitesh Jha" and a Dev.to account named "Nitesh Jha", how does the system know with 100% certainty that they are the same human? This system solves it using a **Deterministic-to-Heuristic Resolution Pipeline**.
-
----
-
-## 📑 Table of Contents
-1. [Key Features & Engineering Decisions](#-key-features--engineering-decisions)
-2. [End-to-End Architecture](#-end-to-end-architecture)
-3. [The 5-Phase Resolution Engine](#-the-5-phase-resolution-engine)
-4. [Storage Schema](#-storage-schema)
-5. [Local Development Setup](#-local-development-setup)
+## Table of Contents
+- [Architecture & Data Flow](#architecture--data-flow)
+- [Schema Design](#schema-design)
+- [Entity Resolution Strategy](#entity-resolution-strategy)
+- [Observability](#observability)
+- [Local Setup Instructions](#local-setup-instructions)
+- [Next Week (Future Scope)](#next-week-future-scope)
 
 ---
 
-## 🌟 Key Features & Engineering Decisions
+## Architecture & Data Flow
 
-- **Human-in-the-Loop (HITL) Admin Console:** The AI never makes destructive merges blindly. High-confidence LLM matches are auto-merged, while ambiguous edge cases are pushed to a visual Admin Audit console for manual verification.
-- **Fault Tolerance & Async I/O:** Deep integration with Python's `asyncio` guarantees non-blocking execution. Strict 10-second timeouts prevent the event loop from freezing if external APIs (like HackerNews) go offline.
-- **Rate Limit Protection:** Explicitly intercepts `HTTP 429` and StackOverflow "backoff" requests, instantly halting crawls and throwing `502 Bad Gateway` to the frontend rather than swallowing the error.
-- **Distributed Observability:** Application-wide metrics (API calls, LLM token usage, resolution latency) are collected in-memory and asynchronously flushed to Supabase every 15 seconds, ensuring flawless tracking across multi-worker Uvicorn setups.
+The application is split into a **FastAPI** backend and a **React/Vite** frontend, completely decoupled to allow independent scaling.
 
----
+1. **API Ingestion (`POST /profiles/resolve`)**: The user submits a name and optional metadata (handles, location, workplace).
+2. **Phase 0 (High-Speed Cache)**: Before any external APIs are hit, the system checks Supabase. If the exact handles are already linked to a canonical profile, it instantly returns the cached Canonical ID.
+3. **Phase 1 (Disambiguation & Search)**: If explicit handles aren't provided, the engine queries the external platform APIs by name. We strictly limit deep fetches to the top 5 candidates to prevent cascading API rate limits.
+4. **Phase 2 (Graph Crawler)**: Using known handles, the engine recursively scrapes the platforms, extracting links (e.g., a Twitter link in a GitHub bio) to discover other profiles belonging to the same human. 
+5. **Phase 3 (LLM Tiebreaker)**: If platforms are missing, we take the remaining top candidates and feed their raw JSON into **Gemini 3.5 Flash**. The LLM uses heuristics (like tech stack overlaps and writing style) to confidently tiebreak and unify the profile.
+6. **Phase 4 (Executive Summary)**: The unified data is summarized into a single professional paragraph by the LLM and returned to the client.
 
-## 🏗 End-to-End Architecture
+## Schema Design
 
-```mermaid
-graph TD
-  A[Client Request] --> B{Handle Provided?}
-  
-  B -- Yes --> C[Phase 0: Database Caching]
-  
-  B -- No --> D1[Phase 1: Disambiguation & Smart Caching]
-  D1 --> D2{In Cache?}
-  D2 -- Yes --> E[Return Cached Choices]
-  D2 -- No --> D3[Fetch APIs & Rank Candidates]
-  D3 --> E
-  E --> F[User Selects Match]
-  F --> C
-  
-  C --> G{In DB?}
-  G -- Yes --> H[Return Profile]
-  G -- No --> I[Phase 2: Recursive Graph Crawler]
-  
-  I --> J[Fetch Raw JSON Profiles]
-  J --> K[Parse Bio & Website Links]
-  K --> L{New Links Found?}
-  L -- Yes --> J
-  
-  L -- No --> M[Phase 3: LLM Tiebreaker]
-  M --> N{Platforms Missing?}
-  
-  N -- Yes --> O[Gemini 3.5 Heuristic Analysis]
-  O -->|Confidence > 0.85| Q[Confirmed Match]
-  O -->|Confidence > 0.50| R[Pending Admin Audit]
-  O -->|Confidence < 0.50| S[Rejected Match]
-  
-  N -- No --> T[Phase 4: Executive Summary Generation]
-  Q --> T
-  R --> T
-  T --> H
-```
+The Supabase schema is built around the concept of a **Star Schema for Identity**.
+
+- **`canonical_entities`**: The single source of truth for a human being (contains their `primary_name` and the AI-generated `llm_summary`).
+- **`raw_profiles`**: The raw, unstructured JSON payloads returned by GitHub, StackOverflow, etc. Each row represents one account on one platform.
+- **`entity_links`**: The junction table connecting a `canonical_entity` to a `raw_profile`. It includes a `confidence_score` and a `status` (confirmed, pending_review, rejected). This allows a Human-in-the-Loop (HITL) admin to audit AI-generated links.
+- **`search_cache`**: A hashed cache table that stores the results of computationally expensive cross-platform name searches.
+
+This architecture ensures we never lose raw data and can easily recalculate a canonical identity if an incorrect link is removed.
+
+## Entity Resolution Strategy
+
+Our strategy balances speed, API limits, and accuracy using a fallback hierarchy:
+
+1. **Exact Match (Deterministic)**: If a user provides an explicit handle, or if a handle is extracted directly from a bio during the Graph Crawl, it is linked with 1.0 confidence. Zero LLM tokens are wasted.
+2. **N-Gram Heuristic Filter**: Before asking the LLM to analyze candidates, we use lightweight string intersection (N-Grams) on locations and workplaces to filter out obvious mismatches.
+3. **Semantic LLM Tiebreaker (Probabilistic)**: When deterministic matching fails, we prompt a Large Language Model to act as an Entity Resolution Agent. It compares the raw JSON of an Anchor profile (e.g., a known GitHub account) against 5 Candidates (e.g., 5 potential StackOverflow accounts) to find nuanced signals like shared obscure repositories.
+
+## Observability
+
+The backend utilizes a custom `Tracker` singleton that intercepts and logs:
+- API calls per platform (and tracks GitHub/StackExchange rate limits)
+- LLM Token consumption
+- Resolution Engine latency
+- Disambiguation flow counts
+
+This data is exposed via a `GET /health` endpoint and visualized in the React frontend's **Health** tab, allowing operators to monitor the financial (tokens) and infrastructure (rate limits) costs in real-time.
 
 ---
 
-## 🧠 The 5-Phase Resolution Engine
+## Local Setup Instructions
 
-### Phase 0: Database Caching
-If the user provides an exact handle (e.g., `github="Niteshkrjhag"`), the engine bypasses all external network calls and checks the Supabase database. If the canonical profile was already resolved, it returns it instantly (< 50ms).
+### Prerequisites
+- Python 3.12.3
+- Node.js 18+
+- A Supabase Project (with the SQL schema applied)
 
-### Phase 1: Disambiguation & Smart Caching
-If only a Name and Metadata are provided, the system must search the web to find potential matches.
-- **Smart Hashing:** It hashes the exact inputs (e.g., `md5("nitesh|srinagar")`) and checks the `search_cache` table. If a previous user made the same search, it returns the choices instantly.
-- **Candidate Ranking:** If not cached, it concurrently fetches search results from GitHub and StackOverflow. It parses the raw bio JSON of every candidate and increments a `match_score` if the text contains the requested Location or Workplace. The candidates are saved to the cache and returned to the UI for human selection.
-
-### Phase 2: Recursive Graph Crawler
-Once a candidate handle is selected (or provided initially), the high-performance async crawler begins.
-- It fetches the initial profile and scans its raw JSON (websites, bio links, blog URLs) using regex cross-pollination.
-- If it discovers a link to another platform (e.g., finding a Dev.to URL on their GitHub), it recursively fetches that new profile. 
-- This mathematically exhausts the developer's deterministically connected graph.
-
-### Phase 3: LLM Tiebreaker (Heuristic Fallback)
-For any platforms still missing after the deterministic graph crawl, a fallback heuristic search is performed. The raw JSON of the newly found profile is sent alongside the "Anchor" profile to Gemini (acting as an expert semantic judge).
-- **`> 85% Confidence:`** Auto-Merges the identity into the canonical database.
-- **`50% - 84% Confidence:`** Flags the link as `pending_review`, requiring a Human-in-the-Loop admin audit.
-- **`< 50% Confidence:`** Rejects the profile.
-
-### Phase 4: Executive Summary Generation
-Finally, the unified JSON data across all confirmed platforms is passed back to Gemini to generate a single, highly readable executive summary of the developer's entire career and impact.
-
----
-
-## 🗄 Storage Schema (Supabase)
-1. **`raw_profiles`**: Untouched JSON dumps from platforms (Event Sourcing pattern).
-2. **`canonical_entities`**: The resolved "Human" identity containing the LLM-generated summary.
-3. **`entity_links`**: The relational junction table mapping multiple raw profiles to a single canonical entity, storing the confidence score and audit status.
-4. **`search_cache`**: High-speed cache for Phase 1 queries.
-5. **`observability_metrics`**: Distributed telemetry tracking for API rate limits, LLM token costs, and system latency.
-
----
-
-## 🚀 Local Development Setup
-
-### 1. Install Dependencies
+### 1. Environment Variables
+Copy `.env.example` to `.env` in the root directory and fill in your keys:
 ```bash
+cp .env.example .env
+```
+*(Required: `SUPABASE_URL`, `SUPABASE_KEY`, `GEMINI_API_KEY`. Optional: `GITHUB_TOKEN`, `STACK_EXCHANGE_KEY`, `DEVTO_API_KEY`).*
+
+### 2. Backend Setup
+```bash
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
-cd frontend && npm install
+
+# Run the FastAPI server (starts on http://localhost:8080)
+uvicorn src.server:app --host 0.0.0.0 --port 8080 --reload
 ```
 
-### 2. Configure Environment Variables
-Create a `.env` file in the root directory:
-```ini
-SUPABASE_URL=your_url
-SUPABASE_KEY=your_service_role_key
-GEMINI_API_KEY=your_gemini_key
-
-# Optional but recommended to avoid aggressive rate limiting
-GITHUB_TOKEN=optional_github_token
-STACK_EXCHANGE_KEY=optional_so_key
-DEVTO_API_KEY=optional_devto_key
-```
-
-### 3. Run the Stack
-Start both the backend server and frontend client:
+### 3. Frontend Setup
 ```bash
-# Terminal 1: Run the FastAPI Backend
-uvicorn src.api.main:app --reload --port 8080
+cd frontend
 
-# Terminal 2: Run the React Vite Frontend
-cd frontend && npm run dev
+# Install dependencies
+npm install
+
+# Run the Vite development server (starts on http://localhost:5173)
+npm run dev
 ```
+
+---
+
+## What I Would Do With More Time (Next Week)
+
+If I had another week to work on this, my core focus would be on **Extreme Latency Reduction** and **Pre-emptive Graph Resolution**:
+
+1. **Pre-emptive Connectivity Graphs**:
+   Right now, if a name search returns 30 GitHub candidates, the user has to select one *before* we crawl their cross-platform links. Next week, I would build a concurrent engine that instantly builds a localized connectivity graph for *all* top candidates simultaneously. By the time the disambiguation UI loads, we could show the user: *"Is this you? (GitHub + StackOverflow + Twitter)"* instead of just showing them isolated GitHub accounts. 
+   
+2. **Aggressive API Minimization**:
+   I want to radically reduce the number of API calls we make. I would redesign the fetcher classes to utilize GraphQL (for GitHub) to fetch the profile, repos, and events in a single network request instead of 7 sequential REST calls. 
+
+3. **Background Processing & Webhooks**:
+   Currently, the React frontend waits on a single HTTP connection. For deeper crawls (Depth 5), this hits serverless timeout limits. I would refactor the architecture to return a `job_id` immediately, process the graph in a Celery/Redis background worker, and push the final unified profile to the frontend via WebSockets or Server-Sent Events (SSE).
