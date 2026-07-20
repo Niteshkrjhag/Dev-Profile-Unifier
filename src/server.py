@@ -6,7 +6,7 @@ import uvicorn
 
 from src.core.resolution import ProfileResolver
 from src.core.supabase_client import SupabaseDB
-from src.utils.metrics import Tracker
+from src.core.observability import tracker
 
 app = FastAPI(title="Effiflo Dev Profile Unifier", version="1.0.0")
 
@@ -21,7 +21,7 @@ app.add_middleware(
 # Initialize singletons
 resolver = ProfileResolver()
 db = SupabaseDB()
-tracker = Tracker()
+# tracker imported directly from observability.py
 
 class SearchRequest(BaseModel):
     name: str
