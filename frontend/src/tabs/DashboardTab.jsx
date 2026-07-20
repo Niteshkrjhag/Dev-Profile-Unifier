@@ -97,6 +97,28 @@ export default function DashboardTab() {
     }
   }, [result]);
 
+  const buildApiPayload = (data) => {
+    const handles = {};
+    if (data.github) handles.github = data.github;
+    if (data.stackoverflow) handles.stackoverflow = data.stackoverflow;
+    if (data.devto) handles.devto = data.devto;
+    if (data.hackernews) handles.hackernews = data.hackernews;
+
+    const user_metadata = {};
+    if (data.location) user_metadata.location = data.location;
+    if (data.workplace) user_metadata.workplace = data.workplace;
+    if (data.gender) user_metadata.gender = data.gender;
+    if (data.profession_status) user_metadata.profession_status = data.profession_status;
+
+    return {
+      name: data.name,
+      mode: data.mode,
+      fallback_disambiguation: data.fallback_disambiguation || false,
+      handles,
+      user_metadata
+    };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -108,7 +130,7 @@ export default function DashboardTab() {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/profiles/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(buildApiPayload(formData))
       });
 
       const data = await res.json();
@@ -177,7 +199,7 @@ export default function DashboardTab() {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/profiles/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedFormData)
+        body: JSON.stringify(buildApiPayload(updatedFormData))
       });
 
       const data = await res.json();
@@ -219,7 +241,7 @@ export default function DashboardTab() {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/profiles/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedFormData)
+        body: JSON.stringify(buildApiPayload(updatedFormData))
       });
 
       const data = await res.json();
