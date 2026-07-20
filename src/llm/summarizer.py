@@ -1,5 +1,6 @@
 import os
 import json
+import httpx
 from google import genai
 from pydantic import BaseModel
 from typing import Dict, Any, Tuple
@@ -23,6 +24,52 @@ class LLMService:
         self.client = genai.Client(api_key=self.api_key) if self.api_key else None
         # Use 3.5-flash as per environment specs
         self.model_name = "gemini-3.5-flash"
+        
+        # Ollama Fallback Configs
+        self.ollama_api_key = os.getenv("OLLAMA_API_KEY")
+        self.ollama_base_url = os.getenv("OLLAMA_BASE_URL", "https://ollama.com/api")
+        self.ollama_model = os.getenv("OLLAMA_MODEL", "gpt-oss:120b-cloud")
+
+    async def _fallback_to_ollama(self, prompt: str, schema_type: str = "batch") -> Any:
+        """
+        Executes a fallback request to the Ollama API if Gemini fails.
+        """
+        if not self.ollama_api_key:
+            raise Exception("No Ollama API key configured for fallback.")
+            
+        headers = {"Authorization": f"Bearer {self.ollama_api_key}"}
+        payload = {
+            "model": self.ollama_model,
+            "messages": [{"role": "user", "content": prompt}],
+            "format": "json" if schema_type != "summary" else None,
+            "stream": False
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            res = await client.post(f"{self.ollama_base_url}/chat", headers=headers, json=payload)
+            if res.status_code != 200:
+                raise Exception(f"Ollama Fallback Failed ({res.status_code}): {res.text}")
+                
+            res_json = res.json()
+            content = res_json.get("message", {}).get("content", "")
+            
+            if schema_type == "summary":
+                return content, 0
+                
+            # Parse JSON out of the content (sometimes it wraps in markdown blocks)
+            try:
+                # Basic cleanup if the model hallucinates markdown
+                clean_json = content.replace("```json", "").replace("```", "").strip()
+                data = json.loads(clean_json)
+                if schema_type == "batch":
+                    return data.get("best_match_index", -1), data.get("confidence", 0.0), data.get("reason", "No reason provided"), 0
+                elif schema_type == "entity":
+                    return data.get("is_match", False), data.get("confidence", 0.0), data.get("reason", "No reason provided"), 0
+            except json.JSONDecodeError:
+                if schema_type == "batch":
+                    return -1, 0.0, "Ollama returned invalid JSON", 0
+                else:
+                    return False, 0.0, "Ollama returned invalid JSON", 0
 
     async def evaluate_platform_candidates(self, base_profile: dict, platform: str, candidates: list, user_metadata: dict = None) -> Tuple[int, float, str, int]:
         """
@@ -84,7 +131,13 @@ class LLMService:
             return -1, 0.0, "LLM returned empty structured response", tokens
             
         except Exception as e:
-            print(f"LLM Batch Tiebreaker Error: {e}")
+            print(f"Gemini LLM Batch Tiebreaker Error: {e}. Attempting Ollama Fallback...")
+            if self.ollama_api_key:
+                try:
+                    return await self._fallback_to_ollama(prompt, schema_type="batch")
+                except Exception as ollama_e:
+                    print(f"Ollama Fallback Error: {ollama_e}")
+                    return -1, 0.0, f"Error processing batch (Gemini & Ollama failed): {str(ollama_e)}", 0
             return -1, 0.0, f"Error processing batch: {str(e)}", 0
 
     async def evaluate_candidates_without_anchor(self, name: str, user_metadata: dict, candidates: list) -> Tuple[int, float, str, int]:
@@ -134,7 +187,13 @@ class LLMService:
                 tokens = getattr(response.usage_metadata, "total_token_count", 0)
             return data.get("best_match_index", -1), data.get("confidence", 0.0), data.get("reason", "No reason provided"), tokens
         except Exception as e:
-            print(f"LLM Phase 1 Tiebreaker Error: {e}")
+            print(f"Gemini LLM Phase 1 Tiebreaker Error: {e}. Attempting Ollama Fallback...")
+            if self.ollama_api_key:
+                try:
+                    return await self._fallback_to_ollama(prompt, schema_type="batch")
+                except Exception as ollama_e:
+                    print(f"Ollama Fallback Error: {ollama_e}")
+                    return -1, 0.0, f"Error processing batch (Gemini & Ollama failed): {str(ollama_e)}", 0
             return -1, 0.0, f"Error processing batch: {str(e)}", 0
 
     async def tiebreaker_resolution(self, profile1: dict, profile2: dict, user_metadata: dict = None) -> Tuple[bool, float, str, int]:
@@ -198,6 +257,13 @@ class LLMService:
             return False, 0.0, "LLM returned empty structured response", tokens
             
         except Exception as e:
+            print(f"Gemini LLM Tiebreaker Error: {e}. Attempting Ollama Fallback...")
+            if self.ollama_api_key:
+                try:
+                    return await self._fallback_to_ollama(prompt, schema_type="entity")
+                except Exception as ollama_e:
+                    print(f"Ollama Fallback Error: {ollama_e}")
+                    return False, 0.0, f"Error calling Gemini & Ollama: {str(ollama_e)}", 0
             return False, 0.0, f"Error calling Gemini: {str(e)}", 0
 
     async def generate_summary(self, unified_data: str) -> Tuple[str, int]:
@@ -243,4 +309,11 @@ class LLMService:
             return response.text, tokens
             
         except Exception as e:
+            print(f"Gemini LLM Summary Error: {e}. Attempting Ollama Fallback...")
+            if self.ollama_api_key:
+                try:
+                    return await self._fallback_to_ollama(prompt, schema_type="summary")
+                except Exception as ollama_e:
+                    print(f"Ollama Fallback Error: {ollama_e}")
+                    return f"Summary generation failed (Gemini & Ollama): {str(ollama_e)}", 0
             return f"Summary generation failed: {str(e)}", 0
