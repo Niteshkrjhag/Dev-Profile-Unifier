@@ -27,30 +27,36 @@ When a user searches for a developer, the engine processes the request in distin
 ```mermaid
 graph TD
     A[User Request] --> B{Phase 0: Cache Check}
-    B -- Fully Cached --> C[Return Cached Profile]
-    B -- Partial Cache / Miss --> D{Explicit Handles?}
+    B -- Fully Cached --> C[Return Unified Profile]
+    B -- Partial / Miss --> D{Provided Explicit Handles?}
     
-    D -- Yes --> F[Phase 2: Graph Crawler]
-    D -- No (Name Only) --> E[Phase 1: Disambiguation Search]
+    D -- No (Name Only) --> E[Phase 1: Search Platforms by Name]
+    E --> E1{Is Mode 'Autonomous'?}
+    E1 -- No (Transparent/Strict) --> E2[Return Multiple Choices UI]
+    E1 -- Yes --> E3[LLM Phase 1 Tiebreaker]
+    E3 -- AI Matches Candidate --> F
+    E3 -- AI Uncertain --> E2
     
-    E --> E1{Engine Mode?}
-    E1 -- Strict --> E2[Halt: Require Manual Links]
-    E1 -- Transparent --> E3[Return Multiple Choices to UI]
-    E1 -- Autonomous --> E4[LLM Phase 1 Tiebreaker]
+    E2 -- User Selects Candidate --> F[Phase 2: Graph Crawler]
+    D -- Yes --> F
     
-    E4 -- Success --> F
-    E4 -- Failure --> E3
-    E3 -- User Selects Match --> F
+    F --> G[Crawl Bios & Websites for Links]
+    G --> H[Extract & Verify New Platform Handles]
+    H --> I{Are Platforms Missing?}
     
-    F --> G[Crawl Platforms for External Links]
-    G --> I{Missing Platforms?}
+    I -- No --> L[Phase 4: LLM Summary Generation]
+    I -- Yes --> J{Is Mode 'Strict'?}
+    J -- Yes --> L
+    J -- No (Autonomous/Transparent) --> K[Phase 3: Search Missing Platforms by Name]
     
-    I -- No --> L[Phase 4: Generate LLM Summary]
-    I -- Yes --> J[Phase 3: Fallback Name Search]
-    J --> K[LLM Semantic Tiebreaker]
-    K --> L
+    K --> K1{Is Mode 'Autonomous'?}
+    K1 -- No (Transparent) --> E2
+    K1 -- Yes --> K2[LLM Semantic Tiebreaker vs Anchor Profile]
     
-    L --> M[Store in DB & Return Unified Profile]
+    K2 -- AI Matches Candidate --> L
+    K2 -- AI Uncertain --> E2
+    
+    L --> M[Save to Supabase & Return Unified Profile]
 ```
 
 ## Schema Design
