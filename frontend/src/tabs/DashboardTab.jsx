@@ -1,66 +1,58 @@
 import { useState, useEffect } from 'react';
 
-const LoadingPhases = () => {
-  const [activePhase, setActivePhase] = useState(0);
-  const phases = [
-    { name: "Phase 0: Database Caching", desc: "Checking high-speed cache..." },
-    { name: "Phase 1: Disambiguation", desc: "Hashing query & ranking candidates..." },
-    { name: "Phase 2: Graph Crawler", desc: "Recursively traversing cross-platform links..." },
-    { name: "Phase 3: LLM Tiebreaker", desc: "Analyzing semantics with Gemini 3.5..." },
-    { name: "Phase 4: Executive Summary", desc: "Generating unified identity profile..." }
+const LoadingState = () => {
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [message, setMessage] = useState("Querying external developer platforms...");
+
+  const messages = [
+    "Querying external developer platforms...",
+    "Crawling cross-platform social graphs...",
+    "Running LLM semantic resolution...",
+    "Structuring canonical identity...",
+    "Finalizing response..."
   ];
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActivePhase(prev => (prev < 3 ? prev + 1 : prev));
-    }, 1500);
-    return () => clearInterval(interval);
+    const timer = setInterval(() => {
+      setTimeLeft(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const msgInterval = setInterval(() => {
+      setMessage(prev => {
+        const idx = messages.indexOf(prev);
+        return messages[(idx + 1) % messages.length];
+      });
+    }, 4000);
+    return () => clearInterval(msgInterval);
+  }, []);
+
+  const progress = ((30 - timeLeft) / 30) * 100;
+
   return (
-    <div className="glass-panel animate-fade-in" style={{ padding: '32px' }}>
-      <h2 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{ width: '24px', height: '24px', border: '3px solid var(--accent-color)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-        Unifying Identity...
-      </h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {phases.map((p, idx) => {
-          const isActive = activePhase === idx;
-          const isDone = activePhase > idx;
-          return (
-            <div key={idx} style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '16px',
-              opacity: isActive || isDone ? 1 : 0.4,
-              transform: isActive ? 'scale(1.02)' : 'scale(1)',
-              transition: 'all 0.3s ease',
-              padding: '12px 16px',
-              background: isActive ? 'rgba(0,113,227,0.1)' : isDone ? 'rgba(52,199,89,0.05)' : 'transparent',
-              border: isActive ? '1px solid var(--accent-color)' : isDone ? '1px solid var(--success-color)' : '1px solid rgba(0,0,0,0.05)',
-              borderRadius: '12px'
-            }}>
-              <div style={{ 
-                width: '32px', height: '32px', borderRadius: '50%', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                background: isActive ? 'var(--accent-color)' : isDone ? 'var(--success-color)' : '#eee',
-                color: isActive || isDone ? 'white' : '#999',
-                fontWeight: 'bold',
-                boxShadow: isActive ? '0 0 15px rgba(0,113,227,0.5)' : 'none'
-              }}>
-                {isDone ? '✓' : idx}
-              </div>
-              <div>
-                <strong style={{ display: 'block', color: isActive ? 'var(--accent-color)' : isDone ? 'var(--success-color)' : 'var(--text-primary)' }}>{p.name}</strong>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{p.desc}</span>
-              </div>
-            </div>
-          );
-        })}
+    <div className="glass-panel animate-fade-in" style={{ padding: '40px', textAlign: 'center' }}>
+      <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto 24px' }}>
+        <svg viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(0,0,0,0.05)" strokeWidth="8" />
+          <circle 
+            cx="50" cy="50" r="45" fill="none" stroke="var(--accent-color)" strokeWidth="8"
+            strokeDasharray="283" strokeDashoffset={283 - (283 * progress) / 100}
+            style={{ transition: 'stroke-dashoffset 1s linear' }}
+          />
+        </svg>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+          <span style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{timeLeft}s</span>
+        </div>
       </div>
-      <style>{`
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-      `}</style>
+      <h2 style={{ marginBottom: '12px', color: 'var(--text-primary)' }}>Unifying Identity...</h2>
+      <p style={{ color: 'var(--accent-color)', fontWeight: '500', minHeight: '24px', transition: 'opacity 0.3s' }}>
+        {message}
+      </p>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '16px' }}>
+        This process can take up to 30 seconds due to API rate limits and LLM inference time.
+      </p>
     </div>
   );
 };
@@ -371,7 +363,7 @@ export default function DashboardTab() {
         </div>
 
         <div style={{ flex: 1 }}>
-          {loading && <LoadingPhases />}
+          {loading && <LoadingState />}
           
           {!loading && result?.type === 'success' && result.profile && (
             <div className="glass-panel animate-fade-in" style={{ padding: '24px' }}>
