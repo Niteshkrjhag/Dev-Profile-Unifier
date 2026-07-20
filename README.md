@@ -26,37 +26,41 @@ When a user searches for a developer, the engine processes the request in distin
 
 ```mermaid
 graph TD
-    A[User Request] --> B{Phase 0: Cache Check}
-    B -- Fully Cached --> C[Return Unified Profile]
-    B -- Partial / Miss --> D{Provided Explicit Handles?}
-    
-    D -- No (Name Only) --> E[Phase 1: Search Platforms by Name]
-    E --> E1{Is Mode 'Autonomous'?}
-    E1 -- No (Transparent/Strict) --> E2[Return Multiple Choices UI]
-    E1 -- Yes --> E3[LLM Phase 1 Tiebreaker]
-    E3 -- AI Matches Candidate --> F
-    E3 -- AI Uncertain --> E2
-    
-    E2 -- User Selects Candidate --> F[Phase 2: Graph Crawler]
-    D -- Yes --> F
-    
-    F --> G[Crawl Bios & Websites for Links]
-    G --> H[Extract & Verify New Platform Handles]
-    H --> I{Are Platforms Missing?}
-    
-    I -- No --> L[Phase 4: LLM Summary Generation]
-    I -- Yes --> J{Is Mode 'Strict'?}
-    J -- Yes --> L
-    J -- No (Autonomous/Transparent) --> K[Phase 3: Search Missing Platforms by Name]
-    
-    K --> K1{Is Mode 'Autonomous'?}
-    K1 -- No (Transparent) --> E2
-    K1 -- Yes --> K2[LLM Semantic Tiebreaker vs Anchor Profile]
-    
-    K2 -- AI Matches Candidate --> L
-    K2 -- AI Uncertain --> E2
-    
-    L --> M[Save to Supabase & Return Unified Profile]
+    Start([User Submits Search]) --> Phase0{Phase 0: Cache Check}
+    Phase0 -- "Complete Match" --> End([Show Profile])
+    Phase0 -- "Missing Data" --> HasHandles{Provided Handles?}
+
+    subgraph "Phase 1: Disambiguation"
+        HasHandles -- "No" --> Search1[Search by Name]
+        Search1 --> Mode1{Engine Mode?}
+        Mode1 -- "Autonomous" --> AI1[AI Selects Best Match]
+        Mode1 -- "Transparent / Strict" --> AskUser1([Ask User to Pick Match])
+        AI1 -- "AI Uncertain" --> AskUser1
+    end
+
+    subgraph "Phase 2: Graph Crawler"
+        HasHandles -- "Yes" --> Crawl[Scrape Profiles for Bio Links]
+        AskUser1 -- "User Selects" --> Crawl
+        AI1 -- "AI Confident" --> Crawl
+        Crawl --> Extract[Find Connected Accounts]
+    end
+
+    subgraph "Phase 3: Fallback Search"
+        Extract --> Missing{Missing Platforms?}
+        Missing -- "Yes" --> Mode3{Engine Mode?}
+        Mode3 -- "Autonomous" --> AI3[AI Semantic Tiebreaker]
+        Mode3 -- "Transparent" --> AskUser2([Ask User to Pick Match])
+        AI3 -- "AI Uncertain" --> AskUser2
+    end
+
+    subgraph "Phase 4: Summarization"
+        Missing -- "No" --> Final[Generate AI Summary]
+        Mode3 -- "Strict (Skip Fallback)" --> Final
+        AI3 -- "AI Confident" --> Final
+        AskUser2 -- "User Selects" --> Final
+        Final --> DB[Save to Database]
+        DB --> End
+    end
 ```
 
 ## Schema Design
