@@ -39,6 +39,7 @@ class SearchRequest(BaseModel):
     user_metadata: Optional[Dict[str, str]] = {}
     handles: Optional[Dict[str, str]] = {}
     mode: Optional[str] = "transparent"
+    fallback_disambiguation: Optional[bool] = False
 
 class ManualResolveRequest(BaseModel):
     canonical_id: str
@@ -57,7 +58,8 @@ async def resolve_profile(req: SearchRequest):
             name=req.name,
             user_metadata=req.user_metadata,
             handles=req.handles,
-            mode=req.mode
+            mode=req.mode,
+            fallback_disambiguation=req.fallback_disambiguation
         )
         return result
     except Exception as e:
@@ -91,27 +93,12 @@ async def get_profile(canonical_id: str):
 async def health_check():
     """
     Observability Dashboard metrics.
-    - GitHub API rate-limit consumption
-    - Total external API calls made
-    - LLM token usage and estimated cost
-    - Number of profiles resolved, average resolution time
     """
     metrics = tracker.get_metrics()
     
-    # Estimate LLM cost (Gemini 1.5 Flash is roughly $0.075 / 1M input tokens)
-    total_tokens = metrics.get("llm_tokens_used", 0)
-    estimated_cost_usd = (total_tokens / 1_000_000) * 0.075
-    metrics["estimated_llm_cost_usd"] = round(estimated_cost_usd, 4)
-    
-    # Calculate average resolution time
-    resolutions = metrics.get("total_resolutions", 0)
-    total_time_ms = metrics.get("total_resolution_time_ms", 0)
-    avg_time_ms = (total_time_ms / resolutions) if resolutions > 0 else 0
-    metrics["average_resolution_time_ms"] = round(avg_time_ms, 2)
-    
     return {
         "status": "healthy",
-        "observability": metrics
+        "metrics": metrics
     }
 
 if __name__ == "__main__":
