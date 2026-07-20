@@ -23,6 +23,17 @@ resolver = ProfileResolver()
 db = SupabaseDB()
 # tracker imported directly from observability.py
 
+@app.get("/")
+async def root():
+    return {
+        "message": "Welcome to the Effiflo Dev Profile Unifier API!",
+        "endpoints": {
+            "health_dashboard": "/health",
+            "resolve_profile": "POST /profiles/resolve",
+            "get_profile": "GET /profiles/{id}"
+        }
+    }
+
 class SearchRequest(BaseModel):
     name: str
     user_metadata: Optional[Dict[str, str]] = {}
