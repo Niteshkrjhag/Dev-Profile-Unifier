@@ -221,9 +221,10 @@ class ProfileResolver:
                     handles[top_cand["platform"]] = top_cand["handle"]
                 else:
                     return {
-                        "status": "error",
+                        "status": "multiple_choices",
                         "canonical_id": None,
-                        "message": "Autonomous mode: AI could not confidently determine a match from the initial name search. Resolution aborted."
+                        "message": "Autonomous Mode: AI could not confidently determine a match. Do you want to manually approach this one?",
+                        "candidates": candidates
                     }
             else:
                 return {
