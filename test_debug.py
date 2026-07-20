@@ -6,16 +6,16 @@ from src.core.resolution import ProfileResolver
 
 async def main():
     resolver = ProfileResolver()
-    handles = {"devto": "niteshkrjha"}
+    handles = {"github": "mojombo"}
     user_metadata = {"location": "San Francisco"}
     
-    print("Testing Autonomous mode...")
+    print("Testing Transparent mode...")
     result = await resolver.resolve_and_store(
-        name="Nitesh Kumar Jha",
+        name="Tom Preston-Werner",
         handles=handles,
         user_metadata=user_metadata,
-        mode="autonomous",
-        depth="lighter",
+        mode="transparent",
+        depth="normal",
         fallback_disambiguation=False
     )
     

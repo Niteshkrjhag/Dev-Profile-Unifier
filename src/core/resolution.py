@@ -211,9 +211,21 @@ class ProfileResolver:
             await asyncio.to_thread(self.db.save_search_cache, query_hash, candidates)
                 
             if mode == 'autonomous' and candidates:
-                # Auto-select highest scored candidate and skip human verification
-                top_cand = candidates[0]
-                handles[top_cand["platform"]] = top_cand["handle"]
+                # Use LLM to tiebreak without anchor on top 5 candidates
+                top_candidates = candidates[:5]
+                best_idx, conf, reason, tokens = await self.llm.evaluate_candidates_without_anchor(name, user_metadata, top_candidates)
+                tracker.record_llm_usage(tokens)
+                
+                if best_idx != -1 and 0 <= best_idx < len(top_candidates) and conf >= 0.85:
+                    top_cand = top_candidates[best_idx]
+                    handles[top_cand["platform"]] = top_cand["handle"]
+                else:
+                    return {
+                        "status": "multiple_choices",
+                        "canonical_id": None,
+                        "message": "AI could not confidently determine a match from the name search. Please verify manually.",
+                        "candidates": candidates
+                    }
             else:
                 return {
                     "status": "multiple_choices",
@@ -338,13 +350,23 @@ class ProfileResolver:
                 print("DEBUG: has_candidates =", has_candidates)
                 if has_candidates:
                     all_candidates.sort(key=lambda x: x.get("match_score", 0), reverse=True)
-                    query_hash = f"{name}_fallback_{','.join(sorted(missing_platforms))}"
-                    await asyncio.to_thread(self.db.save_search_cache, query_hash, all_candidates)
+                    
+                    formatted_cands = []
+                    for c in all_candidates:
+                        formatted_cands.append({
+                            "platform": c.get("platform"),
+                            "handle": c.get("handle", "unknown"),
+                            "match_score": c.get("match_score", 0),
+                            "data": c
+                        })
+                        
                     return {
                         "status": "multiple_choices",
                         "canonical_id": canonical_id,
                         "message": "We crawled your profile but couldn't find explicit links. We found these potential matches by name.",
-                        "candidates": all_candidates
+                        "candidates": formatted_cands,
+                        "warnings": resolution_warnings,
+                        "debug_data": debug_data
                     }
 
             if mode == 'transparent' and fallback_disambiguation:

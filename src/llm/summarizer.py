@@ -84,7 +84,58 @@ class LLMService:
             return -1, 0.0, "LLM returned empty structured response", tokens
             
         except Exception as e:
-            return -1, 0.0, f"Error calling Gemini: {str(e)}", 0
+            print(f"LLM Batch Tiebreaker Error: {e}")
+            return -1, 0.0, f"Error processing batch: {str(e)}", 0
+
+    async def evaluate_candidates_without_anchor(self, name: str, user_metadata: dict, candidates: list) -> Tuple[int, float, str, int]:
+        """
+        Uses Gemini to evaluate a list of candidates when no anchor profile is available (Phase 1).
+        Relies purely on name similarity and user_metadata matching.
+        """
+        if not self.client:
+            raise LLMConfigurationError("No API key configured for Gemini LLM tiebreaker.")
+
+        candidates_json = json.dumps([{ "index": i, "profile": c } for i, c in enumerate(candidates)])
+        
+        prompt = f"""
+        Act as an expert Entity Resolution Agent for developer profiles.
+        You are looking for a developer named '{name}'.
+        Additional known metadata about this person: {json.dumps(user_metadata) if user_metadata else '{}'}
+        
+        Analyze the following list of {len(candidates)} potential Candidate profiles.
+        Determine which ONE of these candidates (if any) is the absolute best match for this person.
+        
+        Look for nuanced signals:
+        - Exact location matches
+        - Workplace / Company overlaps
+        - Rare name combinations
+        
+        Candidates List: {candidates_json}
+        
+        Respond with a JSON object containing:
+        - 'best_match_index': integer (the index of the matching candidate, or -1 if NONE are a confident match)
+        - 'confidence': float between 0.0 and 1.0
+        - 'reason': string explaining exactly why you matched them or rejected all of them.
+        """
+        
+        try:
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=genai.types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=BatchResolutionOutput,
+                    temperature=0.1
+                )
+            )
+            data = json.loads(response.text)
+            tokens = 0
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                tokens = getattr(response.usage_metadata, "total_token_count", 0)
+            return data.get("best_match_index", -1), data.get("confidence", 0.0), data.get("reason", "No reason provided"), tokens
+        except Exception as e:
+            print(f"LLM Phase 1 Tiebreaker Error: {e}")
+            return -1, 0.0, f"Error processing batch: {str(e)}", 0
 
     async def tiebreaker_resolution(self, profile1: dict, profile2: dict, user_metadata: dict = None) -> Tuple[bool, float, str, int]:
         """
