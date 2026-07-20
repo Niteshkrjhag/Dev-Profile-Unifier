@@ -3,7 +3,7 @@ services:
     name: effiflo-dev-profile-unifier
     env: python
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "uvicorn src.api.main:app --host 0.0.0.0 --port $PORT"
+    startCommand: "uvicorn src.server:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: SUPABASE_URL
         sync: false
@@ -16,4 +16,10 @@ services:
       - key: STACK_EXCHANGE_KEY
         sync: false
       - key: DEVTO_API_KEY
+        sync: false
+      - key: OLLAMA_API_KEY
+        sync: false
+      - key: OLLAMA_BASE_URL
+        sync: false
+      - key: OLLAMA_MODEL
         sync: false
