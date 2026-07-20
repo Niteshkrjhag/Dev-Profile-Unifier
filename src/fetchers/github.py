@@ -98,7 +98,7 @@ class GithubFetcher(BaseFetcher):
                 if res.status_code == 403:
                     raise Exception("GitHub API Rate Limited (403).")
                 if res.status_code == 200:
-                    items = res.json().get("items", [])
+                    items = res.json().get("items", [])[:5]
                     tasks = []
                     for item in items:
                         handle = item.get("login")

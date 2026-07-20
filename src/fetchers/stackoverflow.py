@@ -108,7 +108,7 @@ class StackOverflowFetcher(BaseFetcher):
                     if "backoff" in res_json:
                         tracker.record_api_call(f"stackoverflow_backoff_{res_json['backoff']}s")
                         print(f"WARNING: StackExchange API requested backoff of {res_json['backoff']} seconds.")
-                    items = res_json.get("items", [])
+                    items = res_json.get("items", [])[:5]
                     return [str(item["user_id"]) for item in items]
             return []
         except httpx.RequestError as e:
