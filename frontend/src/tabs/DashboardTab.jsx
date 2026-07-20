@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 
 const LoadingState = () => {
-  const [timeLeft, setTimeLeft] = useState(30);
   const [message, setMessage] = useState("Querying external developer platforms...");
 
   const messages = [
@@ -13,13 +12,6 @@ const LoadingState = () => {
   ];
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
     const msgInterval = setInterval(() => {
       setMessage(prev => {
         const idx = messages.indexOf(prev);
@@ -29,30 +21,36 @@ const LoadingState = () => {
     return () => clearInterval(msgInterval);
   }, []);
 
-  const progress = ((30 - timeLeft) / 30) * 100;
-
   return (
-    <div className="glass-panel animate-fade-in" style={{ padding: '40px', textAlign: 'center' }}>
-      <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto 24px' }}>
-        <svg viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(0,0,0,0.05)" strokeWidth="8" />
-          <circle 
-            cx="50" cy="50" r="45" fill="none" stroke="var(--accent-color)" strokeWidth="8"
-            strokeDasharray="283" strokeDashoffset={283 - (283 * progress) / 100}
-            style={{ transition: 'stroke-dashoffset 1s linear' }}
-          />
-        </svg>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-          <span style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{timeLeft}s</span>
-        </div>
+    <div className="glass-panel animate-fade-in" style={{ padding: '60px 40px', textAlign: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', height: '60px', marginBottom: '32px' }}>
+        <div className="bouncing-dot" style={{ animationDelay: '0s' }}></div>
+        <div className="bouncing-dot" style={{ animationDelay: '0.2s' }}></div>
+        <div className="bouncing-dot" style={{ animationDelay: '0.4s' }}></div>
       </div>
       <h2 style={{ marginBottom: '12px', color: 'var(--text-primary)' }}>Unifying Identity...</h2>
       <p style={{ color: 'var(--accent-color)', fontWeight: '500', minHeight: '24px', transition: 'opacity 0.3s' }}>
         {message}
       </p>
       <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '16px' }}>
-        This process can take up to 30 seconds due to API rate limits and LLM inference time.
+        This process involves deep cross-platform crawling and may take a moment.
       </p>
+      <style>{`
+        .bouncing-dot {
+          width: 16px;
+          height: 16px;
+          background-color: var(--accent-color);
+          border-radius: 50%;
+          animation: bounce 0.6s infinite alternate cubic-bezier(0.5, 0.05, 1, 0.5);
+        }
+        @keyframes bounce {
+          to {
+            transform: translateY(-20px);
+            opacity: 0.6;
+            background-color: #00b4d8;
+          }
+        }
+      `}</style>
     </div>
   );
 };
