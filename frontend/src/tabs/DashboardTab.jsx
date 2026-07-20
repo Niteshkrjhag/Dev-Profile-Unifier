@@ -437,8 +437,15 @@ export default function DashboardTab() {
               <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
                 {result.data.candidates.map((c, i) => {
                   const profile = c.data?.profile || {};
-                  const profileUrl = c.platform === 'github' ? profile.html_url : profile.link;
-                  const bioText = profile.bio || profile.about_me || '';
+                  
+                  // Hackernews doesn't provide a direct link in the API payload
+                  let profileUrl = '';
+                  if (c.platform === 'github') profileUrl = profile.html_url;
+                  else if (c.platform === 'hackernews') profileUrl = `https://news.ycombinator.com/user?id=${c.handle}`;
+                  else profileUrl = profile.link || profile.url;
+
+                  // Dev.to API returns bio inside 'summary'
+                  const bioText = profile.bio || profile.about_me || profile.summary || '';
                   const locationText = profile.location || '';
                   const companyText = profile.company || '';
                   const reputation = profile.reputation || null;

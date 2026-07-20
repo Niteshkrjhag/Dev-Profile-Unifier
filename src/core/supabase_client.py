@@ -61,8 +61,12 @@ class SupabaseDB:
 
     def link_profile(self, canonical_id: str, raw_profile_id: str, confidence_score: float, match_reason: str, status: str = "confirmed"):
         """
-        Links a raw profile to a canonical entity with a given confidence score.
+        Links a raw profile to a canonical entity. 
+        Enforces 1-to-1 canonical constraint: A raw profile can only belong to one canonical entity.
         """
+        # Check if the raw profile is already linked to ANY canonical entity
+        res = self.client.table("entity_links").select("id").eq("raw_profile_id", raw_profile_id).execute()
+        
         data = {
             "canonical_id": canonical_id,
             "raw_profile_id": raw_profile_id,
@@ -70,7 +74,14 @@ class SupabaseDB:
             "match_reason": match_reason,
             "status": status
         }
-        self.client.table("entity_links").upsert(data, on_conflict="canonical_id,raw_profile_id").execute()
+        
+        if res.data and len(res.data) > 0:
+            # Update the existing link to point to the new canonical_id (Identity Transfer)
+            link_id = res.data[0]["id"]
+            self.client.table("entity_links").update(data).eq("id", link_id).execute()
+        else:
+            # Insert new link
+            self.client.table("entity_links").insert(data).execute()
 
     def get_full_canonical_profile(self, canonical_id: str) -> dict:
         """

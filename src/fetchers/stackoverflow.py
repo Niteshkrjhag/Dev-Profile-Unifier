@@ -40,14 +40,20 @@ class StackOverflowFetcher(BaseFetcher):
                 self._track_response()
                 profile_res = await client.get(f"{self.base_url}/users/{user_id}", params=params)
                 
-                # Check for backoff or rate limit
-                if profile_res.status_code == 400 and "backoff" in profile_res.text:
-                    raise Exception("StackExchange API Rate Limit (Backoff) reached. Please wait.")
                 if profile_res.status_code == 429 or profile_res.status_code == 403:
                     raise Exception(f"StackExchange API Rate Limited ({profile_res.status_code}).")
                     
-                if profile_res.status_code == 200 and profile_res.json().get("items"):
-                    data["profile"] = profile_res.json()["items"][0]
+                if profile_res.status_code == 200:
+                    res_json = profile_res.json()
+                    if "backoff" in res_json:
+                        # Log backoff warning; in a real prod system we'd use asyncio.sleep(res_json["backoff"])
+                        tracker.record_api_call(f"stackoverflow_backoff_{res_json['backoff']}s")
+                        print(f"WARNING: StackExchange API requested backoff of {res_json['backoff']} seconds.")
+                        
+                    if res_json.get("items"):
+                        data["profile"] = res_json["items"][0]
+                    else:
+                        return {}
                 else:
                     return {}
 
@@ -95,12 +101,14 @@ class StackOverflowFetcher(BaseFetcher):
             async with httpx.AsyncClient(timeout=10.0) as client:
                 self._track_response()
                 res = await client.get(f"{self.base_url}/users", params=params)
-                if res.status_code == 400 and "backoff" in res.text:
-                    raise Exception("StackExchange API Rate Limit (Backoff) reached.")
                 if res.status_code == 429 or res.status_code == 403:
                     raise Exception(f"StackExchange API Rate Limited ({res.status_code}).")
                 if res.status_code == 200:
-                    items = res.json().get("items", [])
+                    res_json = res.json()
+                    if "backoff" in res_json:
+                        tracker.record_api_call(f"stackoverflow_backoff_{res_json['backoff']}s")
+                        print(f"WARNING: StackExchange API requested backoff of {res_json['backoff']} seconds.")
+                    items = res_json.get("items", [])
                     return [str(item["user_id"]) for item in items]
             return []
         except httpx.RequestError as e:
