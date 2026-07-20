@@ -18,7 +18,7 @@ The application is built with a **React** frontend and a **FastAPI** backend to 
 
 When a user searches for a developer, the engine processes the request in distinct phases:
 
-1. **Phase 0 (Supabase Cache)**: Before making any external API calls, the engine checks our Supabase database. If the exact platform handles are already linked to a known profile, it returns the cached result instantly.
+1. **Phase 0 (Supabase Cache)**: Before making any external API calls, the engine checks our Supabase database. If *all* requested platform handles are already linked to a known profile, it returns the cached result instantly. If new handles are provided, it proceeds forward to fetch and link them.
 2. **Phase 1 (Disambiguation)**: If we only have a common name (e.g., "Nitesh"), the engine queries the platforms for their top 5 closest matches to present as candidates.
 3. **Phase 2 (Graph Crawler)**: The engine uses recursive graph traversal. It scans a developer's bio (like their GitHub profile) for external links (like a personal website or Twitter handle), and follows those links to discover their other accounts deterministically.
 4. **Phase 3 (LLM Tiebreaker)**: If deterministic links are missing, the engine sends the raw profile data to an AI model (**Gemini 3.5 Flash**). The AI acts as a semantic resolution agent, analyzing coding languages and writing styles to determine if two accounts belong to the exact same human.
@@ -27,8 +27,8 @@ When a user searches for a developer, the engine processes the request in distin
 ```mermaid
 graph TD
     A[User Request] --> B{Phase 0: Cache Check}
-    B -- Hit --> C[Return Cached Profile]
-    B -- Miss --> D{Explicit Handles?}
+    B -- Fully Cached --> C[Return Cached Profile]
+    B -- Partial Cache / Miss --> D{Explicit Handles?}
     
     D -- Yes --> F[Phase 2: Graph Crawler]
     D -- No (Name Only) --> E[Phase 1: Disambiguation Search]
