@@ -101,6 +101,30 @@ async def health_check():
         "metrics": metrics
     }
 
+@app.get("/admin/links")
+async def get_admin_links():
+    """
+    Fetches all entity links that are pending_review or rejected.
+    """
+    try:
+        return db.get_review_links()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class UpdateLinkStatusRequest(BaseModel):
+    status: str
+
+@app.put("/admin/links/{canonical_id}/{raw_profile_id}")
+async def update_admin_link(canonical_id: str, raw_profile_id: str, req: UpdateLinkStatusRequest):
+    """
+    Admin action to manually confirm or reject an entity link.
+    """
+    try:
+        db.update_link_status(canonical_id, raw_profile_id, req.status)
+        return {"message": "Link updated successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 8080))
