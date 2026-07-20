@@ -1,20 +1,20 @@
 # What I Would Do With More Time (Next Week)
 
-If I had one more week to work on the Dev Profile Unifier, my primary goal would be to make the application **incredibly fast** and **easier for the user to interact with**. 
+If I had one more week to work on the Dev Profile Unifier, my primary focus would shift from building baseline accuracy to achieving **Extreme Latency Reduction** and **Pre-emptive Graph Resolution**. 
 
 Here is exactly what I would build and why it matters:
 
 ## 1. Pre-building Connections (Concurrent Disambiguation)
-**The Problem:** Currently, if you search for a common name, the engine might find 30 different GitHub accounts. The user has to guess and click on one *before* the engine goes out and finds their other platforms (like Twitter or StackOverflow). If they click the wrong one, they have to start over.
-**The Solution:** I would rebuild the engine so that it instantly finds the connections for *all* 30 accounts at the exact same time behind the scenes. 
-**The Why:** By the time the user sees the screen, we wouldn't just show them 30 isolated GitHub names. We would show them fully grouped clusters (e.g., *"Is this you? The Nitesh with this GitHub, this Twitter, and this StackOverflow?"*). This makes the app feel like magic for the user and requires much less guessing.
+**The Problem:** Currently, if a name search returns 30 GitHub candidates, the user has to select one *before* the engine crawls their cross-platform links. If they pick the wrong candidate, they have to start over.
+**The Solution:** I would re-architect the engine to instantly trigger lightweight connectivity graphs for *all* top candidates concurrently during the disambiguation phase. 
+**The Why:** By the time the UI loads, we wouldn't just show 30 isolated GitHub accounts. We would show pre-grouped clusters (e.g., *"Is this you? The candidate with this GitHub, Twitter, and StackOverflow account?"*). This massively reduces cognitive load for the user and requires much less guessing.
 
-## 2. Asking for Less Data (GraphQL Migration)
-**The Problem:** To get a full picture of a developer from GitHub, our engine currently has to knock on GitHub's door up to 7 different times (once for the profile, 5 times to read all their code repositories, and once for their recent activity). This is a lot of network traffic and burns through our limits quickly.
-**The Solution:** I would rewrite the engine to use a technology called **GraphQL**. 
-**The Why:** GraphQL allows us to knock on GitHub's door exactly *one* time, and ask for all of that information in a single package. This would drastically speed up the application (saving 2-3 seconds per user) and prevent our servers from ever timing out.
+## 2. Aggressive API Minimization (GraphQL Migration)
+**The Problem:** To get a rich profile from GitHub, the `GithubFetcher` currently has to make up to 7 sequential REST API calls (1 for the profile, 5 for paginated repositories to calculate language frequencies, and 1 for recent events). This creates a network bottleneck and burns through rate limits quickly.
+**The Solution:** I would rewrite the fetcher classes to utilize the GitHub **GraphQL** API instead of standard REST endpoints. 
+**The Why:** GraphQL allows us to fetch the profile, repository statistics, and recent events in a **single** network request. This would drastically reduce latency (saving ~2-3 seconds per user crawled) and fundamentally eliminate the risk of hitting serverless timeouts during deep crawls.
 
-## 3. Background Processing & Live Updates
-**The Problem:** Right now, when the engine is doing a really deep search, the user just watches a bouncing dot animation on the screen while they wait for a single, long-running connection to finish. If it takes too long, the browser might give up and drop the connection.
-**The Solution:** I would change the architecture so that the heavy work is sent to a background worker (like sending an order to the kitchen). 
-**The Why:** This would allow us to stream live updates to the user's screen in real-time (e.g., *"Found GitHub account..." -> "Found 3 Repositories..." -> "Reading StackOverflow answers..."*). It provides a much better experience and ensures the app never crashes from waiting too long.
+## 3. Background Processing & WebSockets
+**The Problem:** The React frontend currently holds a single HTTP connection open waiting for the FastAPI server to finish crawling. For deeper network crawls, this process takes a long time and the browser might drop the connection.
+**The Solution:** I would refactor the architecture into an asynchronous worker model. The API would instantly return a `job_id` and offload the heavy graph crawling to a Celery/Redis background worker. 
+**The Why:** This would allow us to use WebSockets (or Server-Sent Events) to stream real-time progress updates to the frontend UI (e.g., *"Found GitHub repo..."* -> *"Crawling Twitter bio..."*). This provides a vastly superior user experience and guarantees the backend will never timeout.

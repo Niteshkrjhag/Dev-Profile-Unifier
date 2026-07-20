@@ -1,52 +1,52 @@
 # Dev Profile Unifier
 
-The Dev Profile Unifier is an intelligent search engine that finds a developer across different platforms (like GitHub, StackOverflow, Dev.to, and HackerNews) and combines all their scattered information into one clean, unified profile. 
+An intelligent Entity Resolution engine that aggregates a developer's fragmented footprint across GitHub, StackOverflow, Dev.to, and HackerNews into a single, unified canonical profile.
 
 ## Table of Contents
-- [How It Works (Architecture & Data Flow)](#how-it-works-architecture--data-flow)
-- [How We Store Data (Schema Design)](#how-we-store-data-schema-design)
-- [How We Match Profiles (Entity Resolution)](#how-we-match-profiles-entity-resolution)
-- [Keeping Track of Performance (Observability)](#keeping-track-of-performance-observability)
+- [Architecture & Data Flow](#architecture--data-flow)
+- [Schema Design](#schema-design)
+- [Entity Resolution Strategy](#entity-resolution-strategy)
+- [Observability](#observability)
 - [Local Setup Instructions](#local-setup-instructions)
-- [Next Week (Future Plans)](#next-week-future-plans)
+- [Next Week (Future Scope)](#next-week-future-scope)
 
 ---
 
-## How It Works (Architecture & Data Flow)
+## Architecture & Data Flow
 
-The application has two main parts: a **React** frontend (what you see on the screen) and a **FastAPI** backend (the engine running behind the scenes). 
+The application is built with a **React** frontend and a **FastAPI** backend to ensure the user interface and the data processing engine can scale independently.
 
-When you search for a developer, the engine goes through a few simple steps:
+When a user searches for a developer, the engine processes the request in distinct phases:
 
-1. **Step 0 (Fast Cache Check)**: Before doing any hard work, the engine checks our database (**Supabase**) to see if we already know this developer. If we do, it instantly shows their profile.
-2. **Step 1 (Name Search & Clarification)**: If we only have a name (like "Nitesh"), the engine asks all the platforms to give us their top 5 closest matches. 
-3. **Step 2 (The Graph Crawler)**: The engine acts like a detective. It looks at a developer's GitHub bio to see if they linked their Twitter, and then checks their Twitter to see if they linked their website. It follows these clues to automatically link accounts together.
-4. **Step 3 (The AI Tiebreaker)**: If the clues run dry, we give the remaining profiles to a smart AI (**Gemini 3.5 Flash**). The AI reads how the developers write and what technologies they use to figure out if two accounts belong to the exact same person.
-5. **Step 4 (The Final Summary)**: Finally, the AI writes a short, professional summary combining everything we learned about the developer.
+1. **Phase 0 (Supabase Cache)**: Before making any external API calls, the engine checks our Supabase database. If the exact platform handles are already linked to a known profile, it returns the cached result instantly.
+2. **Phase 1 (Disambiguation)**: If we only have a common name (e.g., "Nitesh"), the engine queries the platforms for their top 5 closest matches to present as candidates.
+3. **Phase 2 (Graph Crawler)**: The engine uses recursive graph traversal. It scans a developer's bio (like their GitHub profile) for external links (like a personal website or Twitter handle), and follows those links to discover their other accounts deterministically.
+4. **Phase 3 (LLM Tiebreaker)**: If deterministic links are missing, the engine sends the raw profile data to an AI model (**Gemini 3.5 Flash**). The AI acts as a semantic resolution agent, analyzing coding languages and writing styles to determine if two accounts belong to the exact same human.
+5. **Phase 4 (Summary Generation)**: Finally, the AI generates a concise, professional summary combining all the unified data.
 
-## How We Store Data (Schema Design)
+## Schema Design
 
-We use a database called **Supabase**. Instead of putting all the data into one messy table, we separate it logically:
+We use a **Star Schema** in Supabase to keep our data structured and safe:
 
-- **`canonical_entities`**: This represents the actual, real-life human being. 
-- **`raw_profiles`**: These are the individual accounts (like one specific GitHub account or one StackOverflow account).
-- **`entity_links`**: This is the bridge that connects an account to the human being. If the AI is ever unsure if an account belongs to a human, it marks the bridge as "Pending Review" so an administrator can manually approve it later.
+- **`canonical_entities`**: The single source of truth representing a unique human being.
+- **`raw_profiles`**: Immutable JSON snapshots of individual platform accounts (e.g., a specific GitHub account).
+- **`entity_links`**: A junction table that bridges a `raw_profile` to a `canonical_entity`. 
 
-This setup is very safe. If we accidentally link the wrong account, we can easily break the bridge without losing any underlying data!
+If the AI is uncertain about a match, it flags the `entity_link` with a "Pending Review" status. This allows a human administrator to manually approve or reject the AI's decision without deleting the underlying raw data.
 
-## How We Match Profiles (Entity Resolution)
+## Entity Resolution Strategy
 
-We try to match profiles in a way that is fast and saves money:
+Our strategy balances execution speed, API rate limits, and accuracy:
 
-1. **The Fast Way (Exact Match)**: If the developer explicitly linked their accounts together, we trust them 100%. We don't even use the AI, which saves us money.
-2. **The Smart Filter**: We double-check basic information, like location and company name, to instantly throw away obvious mismatches.
-3. **The AI Detective**: When things get complicated, we ask the **LLM (Large Language Model)** to step in. It reads the raw code and data to make a smart guess.
+1. **Deterministic Matching (Fast)**: If a developer explicitly provides their handles, or if our Graph Crawler extracts a direct link from their bio, we link the accounts with 100% confidence. This avoids using AI entirely, saving processing time and API costs.
+2. **N-Gram Heuristic Filter**: We use lightweight string matching on locations and company names to quickly discard obvious mismatches before they reach the AI.
+3. **Semantic LLM Matching**: For complex disambiguation, we use Large Language Models (LLMs) to catch nuanced signals that traditional code might miss, like shared obscure repositories.
 
-## Keeping Track of Performance (Observability)
+## Observability
 
-Because AI and third-party platforms are expensive and limit how often we can ask them for data, we built a custom Tracker. 
+Because AI tokens and external API calls are expensive and heavily rate-limited, we built a custom Observability Tracker. 
 
-You can view the **Health** tab in the app to see exactly how many times we've asked GitHub for data today, and how much "AI Brainpower" (Tokens) we've consumed. 
+The **Health** tab in the UI exposes real-time metrics, allowing us to monitor exactly how many API calls we've made to GitHub and how many LLM tokens we've consumed during the resolution process.
 
 ---
 
@@ -58,7 +58,7 @@ You can view the **Health** tab in the app to see exactly how many times we've a
 - A Supabase Project 
 
 ### 1. Environment Variables
-Copy `.env.example` to `.env` in the main folder and fill in your keys:
+Copy `.env.example` to `.env` in the root directory and fill in your API keys:
 ```bash
 cp .env.example .env
 ```
@@ -82,7 +82,7 @@ npm run dev
 
 ## What I Would Do With More Time (Next Week)
 
-If I had another week, I would focus on making the app **incredibly fast**:
+If I had another week, I would focus on **Extreme Latency Reduction**:
 
-1. **Pre-building Connections**: Currently, if we find 30 different GitHub accounts, the user has to guess which one is theirs before we look for their other platforms. Next week, I would make the engine instantly figure out the connections for *all* 30 accounts at the same time! This would group them into neat clusters so the user can easily say, "Ah, that's me!"
-2. **Asking for Less Data**: Right now, we have to ask GitHub 7 different times to get all the information we need for one person. I would rewrite our engine to use **GraphQL**, which is a special way to ask GitHub for *all* the information in just one single request. This would make the app lightning fast.
+1. **Concurrent Graph Resolution**: Currently, if a search returns 30 GitHub candidates, the user must select one before we crawl for their other platform links. I would re-architect the engine to build connectivity graphs for *all* candidates concurrently, presenting fully unified clusters to the user instantly.
+2. **GraphQL Migration**: We currently make up to 7 sequential REST API calls to fully resolve a single GitHub profile. I would migrate this to the GitHub GraphQL API, allowing us to fetch the profile, repositories, and recent events in a single network request, drastically reducing latency.
