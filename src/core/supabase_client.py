@@ -65,7 +65,7 @@ class SupabaseDB:
         Enforces 1-to-1 canonical constraint: A raw profile can only belong to one canonical entity.
         """
         # Check if the raw profile is already linked to ANY canonical entity
-        res = self.client.table("entity_links").select("id").eq("raw_profile_id", raw_profile_id).execute()
+        res = self.client.table("entity_links").select("canonical_id").eq("raw_profile_id", raw_profile_id).execute()
         
         data = {
             "canonical_id": canonical_id,
@@ -77,8 +77,7 @@ class SupabaseDB:
         
         if res.data and len(res.data) > 0:
             # Update the existing link to point to the new canonical_id (Identity Transfer)
-            link_id = res.data[0]["id"]
-            self.client.table("entity_links").update(data).eq("id", link_id).execute()
+            self.client.table("entity_links").update(data).eq("raw_profile_id", raw_profile_id).execute()
         else:
             # Insert new link
             self.client.table("entity_links").insert(data).execute()
