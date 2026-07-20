@@ -48,17 +48,66 @@ class ProfileResolver:
             
         return extracted
 
-    async def resolve_and_store(self, name: str, handles: dict, user_metadata: dict = None, mode: str = 'transparent', depth: str = 'normal') -> Dict[str, Any]:
+    def _extract_ngrams(self, text: str) -> set:
+        words = re.findall(r'\b\w+\b', text.lower())
+        ngrams = set(words)
+        for i in range(len(words) - 1):
+            ngrams.add(f"{words[i]} {words[i+1]}")
+        for i in range(len(words) - 2):
+            ngrams.add(f"{words[i]} {words[i+1]} {words[i+2]}")
+        return ngrams
+
+    def _rank_and_filter_candidates(self, base_data: dict, candidates: list, limit: int = 5) -> list:
+        if not candidates or len(candidates) <= limit:
+            return candidates
+            
+        base_text = " ".join([
+            str(base_data.get("profile", {}).get("bio", "")),
+            str(base_data.get("profile", {}).get("location", "")),
+            str(base_data.get("profile", {}).get("company", "")),
+            str(base_data.get("profile", {}).get("name", "")),
+            " ".join(base_data.get("tags", [])),
+            " ".join(base_data.get("top_technologies", []))
+        ])
+        
+        base_ngrams = self._extract_ngrams(base_text)
+        
+        for cand in candidates:
+            cand_text = " ".join([
+                str(cand.get("profile", {}).get("bio", "")),
+                str(cand.get("profile", {}).get("location", "")),
+                str(cand.get("profile", {}).get("company", "")),
+                str(cand.get("profile", {}).get("name", "")),
+                " ".join(cand.get("tags", [])),
+                " ".join(cand.get("top_technologies", []))
+            ])
+            cand_ngrams = self._extract_ngrams(cand_text)
+            
+            # Use overlap size as the match score
+            cand["match_score"] = len(base_ngrams.intersection(cand_ngrams))
+            
+        candidates.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+        return candidates[:limit]
+
+    async def resolve_and_store(self, name: str, handles: dict, user_metadata: dict = None, mode: str = 'transparent', depth: str = 'normal', fallback_disambiguation: bool = False) -> Dict[str, Any]:
         """
         Executes the Iterative Graph Crawler & LLM Tiebreaker resolution pipeline.
-        Returns Canonical ID or 300 Multiple Choices if disambiguation is needed.
+        Returns the unified canonical entity ID.
         """
+        tracker.record_resolution_time(0) # initialize
         start_time = asyncio.get_event_loop().time()
-        
-        fetched_profiles = {}
-        canonical_id = None
         resolution_warnings = []
-
+        
+        # FEATURE: Testing/Debugging Dashboard
+        # We capture intermediate raw and filtered data here to expose to the frontend Testing Tab
+        debug_data = {
+            "phase_1_raw": {},
+            "phase_3_raw": {},
+            "phase_3_llm_input": {}
+        }
+        
+        canonical_id = None
+        
         if not handles:
             handles = {}
 
@@ -128,8 +177,11 @@ class ProfileResolver:
             for platform_name, plat_res in zip(["github", "stackoverflow", "devto", "hackernews"], results):
                 if isinstance(plat_res, Exception):
                     resolution_warnings.append(f"{platform_name} Phase 1 failed: {str(plat_res)}")
+                    debug_data["phase_1_raw"][platform_name] = []
                     continue
+                debug_data["phase_1_raw"][platform_name] = plat_res
                 for c in plat_res:
+                    c["platform"] = platform_name
                     match_score = 0
                     if user_metadata:
                         # Heuristically check if metadata strings exist in the raw JSON payload
@@ -242,82 +294,132 @@ class ProfileResolver:
         # Phase 3: LLM Tiebreaker (Heuristic Fallback)
         ambiguous_matches = []
         missing_platforms = [p for p in ["github", "stackoverflow", "devto", "hackernews"] if p not in fetched_profiles]
+        
+        # FEATURE: Engine Configurations
+        # 'strict' mode completely disables fallback searching and relies purely on explicit links
+        if mode == 'strict':
+            missing_platforms = []
+            
         if missing_platforms and name:
             fallback_tasks = [self.fetchers[p].search_by_name(name) for p in missing_platforms]
-            fallback_results = await asyncio.gather(*fallback_tasks, return_exceptions=True)
+            fallback_results_raw = await asyncio.gather(*fallback_tasks, return_exceptions=True)
             
             base_data = fetched_profiles[base_platform]
             
-            async def evaluate_candidate(platform, candidate_data):
-                cand_handle = candidate_data.get("handle", "unknown")
-                raw_id = None
-                try:
-                    raw_id = await asyncio.to_thread(self.db.find_raw_profile_id, platform, cand_handle)
-                    if not raw_id:
-                        raw_id = await asyncio.to_thread(self.db.insert_raw_profile, platform, cand_handle, candidate_data)
-                    
-                    is_match, conf, reason_text, tokens = await self.llm.tiebreaker_resolution(base_data, candidate_data, user_metadata)
-                    return (platform, cand_handle, raw_id, candidate_data, is_match, conf, reason_text, tokens, None)
-                except Exception as e:
-                    reason = "LLM tiebreaker unavailable - requires manual review" if "No API key" in str(e) else str(e)
-                    return (platform, cand_handle, raw_id, candidate_data, False, 0.0, reason, 0, e)
+            # FEATURE: N-Gram Heuristic Filter
+            # Applies 1, 2, and 3-gram text intersection scoring to rank raw data 
+            # and limits candidates to top 5 per platform before triggering LLM API
+            fallback_results = []
+            for platform, p_candidates in zip(missing_platforms, fallback_results_raw):
+                if isinstance(p_candidates, Exception) or not p_candidates:
+                    fallback_results.append(p_candidates)
+                    debug_data["phase_3_raw"][platform] = []
+                    debug_data["phase_3_llm_input"][platform] = []
+                else:
+                    debug_data["phase_3_raw"][platform] = p_candidates
+                    for c in p_candidates:
+                        c["platform"] = platform
+                    ranked_candidates = self._rank_and_filter_candidates(base_data, p_candidates, limit=5)
+                    fallback_results.append(ranked_candidates)
+                    debug_data["phase_3_llm_input"][platform] = ranked_candidates
+            
+            # FEATURE: Engine Configurations (Transparent Mode)
+            # If the user chose Transparent mode and hasn't selected a candidate yet, we halt and return 300
+            if mode == 'transparent' and not fallback_disambiguation:
+                has_candidates = False
+                all_candidates = []
+                print("DEBUG: fallback_results length:", len(fallback_results))
+                for p_candidates in fallback_results:
+                    print("DEBUG: p_candidates:", "Exception" if isinstance(p_candidates, Exception) else len(p_candidates))
+                    if not isinstance(p_candidates, Exception) and p_candidates:
+                        has_candidates = True
+                        all_candidates.extend(p_candidates)
+                        
+                print("DEBUG: has_candidates =", has_candidates)
+                if has_candidates:
+                    all_candidates.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+                    query_hash = f"{name}_fallback_{','.join(sorted(missing_platforms))}"
+                    await asyncio.to_thread(self.db.save_search_cache, query_hash, all_candidates)
+                    return {
+                        "status": "multiple_choices",
+                        "canonical_id": canonical_id,
+                        "message": "We crawled your profile but couldn't find explicit links. We found these potential matches by name.",
+                        "candidates": all_candidates
+                    }
 
-            eval_tasks = []
-            for platform, candidates in zip(missing_platforms, fallback_results):
-                if isinstance(candidates, Exception) or not candidates:
-                    continue
-                for candidate_data in candidates:
-                    eval_tasks.append(evaluate_candidate(platform, candidate_data))
+            if mode == 'transparent' and fallback_disambiguation:
+                # The user already saw the disambiguation UI and skipped the remaining platforms.
+                # Do NOT run the LLM on them. We are done.
+                pass
+            else:
+                # mode == 'autonomous'
+                async def evaluate_platform_group(platform, candidates):
+                    if not candidates or isinstance(candidates, Exception):
+                        return (platform, -1, 0.0, "No candidates", 0, None, [])
                     
-            if eval_tasks:
-                eval_results = await asyncio.gather(*eval_tasks)
-                
-                platform_results = {}
-                for res in eval_results:
-                    p = res[0]
-                    if p not in platform_results:
-                        platform_results[p] = []
-                    platform_results[p].append(res)
+                    try:
+                        best_idx, conf, reason_text, tokens = await self.llm.evaluate_platform_candidates(base_data, platform, candidates, user_metadata)
+                        return (platform, best_idx, conf, reason_text, tokens, None, candidates)
+                    except Exception as e:
+                        reason = "LLM tiebreaker unavailable - requires manual review" if "No API key" in str(e) else str(e)
+                        return (platform, -1, 0.0, reason, 0, e, candidates)
+    
+                eval_tasks = []
+                for platform, candidates in zip(missing_platforms, fallback_results):
+                    eval_tasks.append(evaluate_platform_group(platform, candidates))
                     
-                for platform, results in platform_results.items():
-                    results.sort(key=lambda x: x[5], reverse=True)
-                    for res in results:
-                        _, cand_handle, raw_id, candidate_data, is_match, conf, reason_text, tokens, err = res
+                if eval_tasks:
+                    eval_results = await asyncio.gather(*eval_tasks)
+                    
+                    for res in eval_results:
+                        platform, best_idx, conf, reason_text, tokens, err, candidates = res
+                        
                         if tokens > 0:
                             tracker.record_llm_usage(tokens)
                             
-                        if err:
-                            resolution_warnings.append(f"LLM Tiebreaker unavailable/failed for {platform}/{cand_handle}: {str(err)}")
-                            # Force pending review if LLM failed
-                            await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, conf, reason_text, "pending_review")
-                            ambiguous_matches.append({
-                                "platform": platform,
-                                "handle": cand_handle,
-                                "confidence": conf,
-                                "reason": reason_text,
-                                "raw_id": raw_id,
-                                "data": candidate_data,
-                                "match_score": 0
-                            })
+                        if not candidates or isinstance(candidates, Exception):
                             continue
                             
-                        if is_match:
-                            if mode == 'autonomous' and conf >= 0.85:
+                        if err:
+                            resolution_warnings.append(f"LLM Tiebreaker unavailable/failed for {platform}: {str(err)}")
+                            for cand in candidates:
+                                cand_handle = cand.get("handle", "unknown")
+                                raw_id = await asyncio.to_thread(self.db.find_raw_profile_id, platform, cand_handle)
+                                if not raw_id:
+                                    raw_id = await asyncio.to_thread(self.db.insert_raw_profile, platform, cand_handle, cand)
+                                await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, 0.0, reason_text, "pending_review")
+                                ambiguous_matches.append({
+                                    "platform": platform, "handle": cand_handle, "confidence": 0.0, "reason": reason_text, "raw_id": raw_id, "data": cand, "match_score": 0
+                                })
+                            continue
+                            
+                        if best_idx != -1 and 0 <= best_idx < len(candidates):
+                            best_candidate = candidates[best_idx]
+                            cand_handle = best_candidate.get("handle", "unknown")
+                            raw_id = await asyncio.to_thread(self.db.find_raw_profile_id, platform, cand_handle)
+                            if not raw_id:
+                                raw_id = await asyncio.to_thread(self.db.insert_raw_profile, platform, cand_handle, best_candidate)
+                            
+                            if conf >= 0.85:
                                 await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, conf, reason_text, "confirmed")
                                 await asyncio.to_thread(self.db.reject_other_links_for_platform, canonical_id, platform, raw_id)
-                                fetched_profiles[platform] = candidate_data
-                                break
+                                fetched_profiles[platform] = best_candidate
                             else:
                                 await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, conf, reason_text, "pending_review")
                                 ambiguous_matches.append({
-                                    "platform": platform,
-                                    "handle": cand_handle,
-                                    "confidence": conf,
-                                    "reason": reason_text,
-                                    "raw_id": raw_id,
-                                    "data": candidate_data,
-                                    "match_score": 0
+                                    "platform": platform, "handle": cand_handle, "confidence": conf, "reason": reason_text, "raw_id": raw_id, "data": best_candidate, "match_score": 0
                                 })
+                        else:
+                            # FEATURE: Admin Audit Fix
+                            # If Gemini returns -1 (no match), explicitly save the top heuristically ranked 
+                            # candidate with a 'rejected' status for the Admin Audit log observability.
+                            if len(candidates) > 0:
+                                best_candidate = candidates[0]
+                                cand_handle = best_candidate.get("handle", "unknown")
+                                raw_id = await asyncio.to_thread(self.db.find_raw_profile_id, platform, cand_handle)
+                                if not raw_id:
+                                    raw_id = await asyncio.to_thread(self.db.insert_raw_profile, platform, cand_handle, best_candidate)
+                                await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, conf, "LLM evaluated and rejected this candidate", "rejected")
 
         # Generate LLM Summary based on confirmed links
         final_profile = await asyncio.to_thread(self.db.get_full_canonical_profile, canonical_id)
@@ -335,11 +437,13 @@ class ProfileResolver:
                 "canonical_id": canonical_id,
                 "message": f"Graph traversal succeeded, but we found {len(ambiguous_matches)} potential matches via LLM Fallback Search. Please review and manually select one.",
                 "ambiguous_matches": ambiguous_matches,
-                "warnings": resolution_warnings
+                "warnings": resolution_warnings,
+                "debug_data": debug_data
             }
 
         return {
             "status": "success",
             "canonical_id": canonical_id,
-            "warnings": resolution_warnings
+            "warnings": resolution_warnings,
+            "debug_data": debug_data
         }

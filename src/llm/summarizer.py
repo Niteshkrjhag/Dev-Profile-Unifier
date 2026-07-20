@@ -9,6 +9,11 @@ class EntityResolutionOutput(BaseModel):
     confidence: float
     reason: str
 
+class BatchResolutionOutput(BaseModel):
+    best_match_index: int
+    confidence: float
+    reason: str
+
 class LLMConfigurationError(Exception):
     pass
 
@@ -18,6 +23,68 @@ class LLMService:
         self.client = genai.Client(api_key=self.api_key) if self.api_key else None
         # Use 3.5-flash as per environment specs
         self.model_name = "gemini-3.5-flash"
+
+    async def evaluate_platform_candidates(self, base_profile: dict, platform: str, candidates: list, user_metadata: dict = None) -> Tuple[int, float, str, int]:
+        """
+        Uses Gemini to evaluate a list of candidates from a specific platform against a base profile simultaneously.
+        Returns: (best_match_index, confidence_score, reason, tokens_used)
+        If no candidates match, best_match_index will be -1.
+        """
+        if not self.client:
+            raise LLMConfigurationError("No API key configured for Gemini LLM tiebreaker.")
+
+        metadata_instruction = ""
+        if user_metadata:
+            metadata_instruction = f"""
+            CRITICAL MATCHING CRITERIA:
+            The user is explicitly searching for a person with the following attributes: {json.dumps(user_metadata)}
+            If any candidate strongly matches these exact attributes, weight it heavily as a positive match (confidence > 0.85).
+            """
+
+        candidates_json = json.dumps([{ "index": i, "profile": c } for i, c in enumerate(candidates)])
+        
+        prompt = f"""
+        Act as an expert Entity Resolution Agent for developer profiles.
+        Analyze the following Anchor profile and a list of {len(candidates)} potential Candidate profiles from '{platform}'.
+        Determine which ONE of these candidates (if any) belongs to the EXACT same human being as the Anchor.
+        
+        Look for nuanced signals:
+        - Tech stack overlaps
+        - Writing style similarities
+        - Shared open source repositories or companies
+        {metadata_instruction}
+        
+        Anchor Profile: {json.dumps(base_profile)}
+        Candidates List: {candidates_json}
+        
+        Respond with a JSON object containing:
+        - "best_match_index": the integer index of the candidate that is the true match. If NONE of them match, return -1.
+        - "confidence": a float between 0.0 and 1.0 representing your confidence in this decision.
+        - "reason": A short explanation of why you selected this index (or why you rejected all).
+        """
+        
+        try:
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=genai.types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=BatchResolutionOutput
+                )
+            )
+            
+            result = response.parsed
+            
+            tokens = 0
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                tokens = getattr(response.usage_metadata, "total_token_count", 0)
+                
+            if result:
+                return result.best_match_index, result.confidence, result.reason, tokens
+            return -1, 0.0, "LLM returned empty structured response", tokens
+            
+        except Exception as e:
+            return -1, 0.0, f"Error calling Gemini: {str(e)}", 0
 
     async def tiebreaker_resolution(self, profile1: dict, profile2: dict, user_metadata: dict = None) -> Tuple[bool, float, str, int]:
         """

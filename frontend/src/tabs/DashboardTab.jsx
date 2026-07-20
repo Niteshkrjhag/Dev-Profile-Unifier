@@ -102,6 +102,7 @@ export default function DashboardTab() {
     setLoading(true);
     setError(null);
     setResult(null);
+    sessionStorage.removeItem('effiflo_debug_data');
 
     try {
       const res = await fetch('http://localhost:8080/profiles/resolve', {
@@ -112,6 +113,10 @@ export default function DashboardTab() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Resolution failed');
+
+      if (data.debug_data) {
+        sessionStorage.setItem('effiflo_debug_data', JSON.stringify(data.debug_data));
+      }
 
       if (data.status === 'multiple_choices') {
         setResult({ type: 'disambiguation', data });
@@ -159,13 +164,14 @@ export default function DashboardTab() {
   const handleProceedWithSelected = async () => {
     if (Object.keys(selectedCandidates).length === 0) return;
     
-    const updatedFormData = { ...formData, ...selectedCandidates };
+    const updatedFormData = { ...formData, ...selectedCandidates, fallback_disambiguation: true };
     setFormData(updatedFormData);
     setSelectedCandidates({});
     
     setLoading(true);
     setError(null);
     setResult(null);
+    sessionStorage.removeItem('effiflo_debug_data');
 
     try {
       const res = await fetch('http://localhost:8080/profiles/resolve', {
@@ -176,6 +182,10 @@ export default function DashboardTab() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Resolution failed');
+
+      if (data.debug_data) {
+        sessionStorage.setItem('effiflo_debug_data', JSON.stringify(data.debug_data));
+      }
 
       if (data.status === 'multiple_choices') {
         setResult({ type: 'disambiguation', data });
@@ -203,6 +213,7 @@ export default function DashboardTab() {
     setLoading(true);
     setError(null);
     setResult(null);
+    sessionStorage.removeItem('effiflo_debug_data');
 
     try {
       const res = await fetch('http://localhost:8080/profiles/resolve', {
@@ -213,6 +224,10 @@ export default function DashboardTab() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Resolution failed');
+
+      if (data.debug_data) {
+        sessionStorage.setItem('effiflo_debug_data', JSON.stringify(data.debug_data));
+      }
 
       if (data.status === 'multiple_choices') {
         setResult({ type: 'disambiguation', data });
@@ -524,14 +539,27 @@ export default function DashboardTab() {
               <h3 style={{ fontSize: '0.85rem', letterSpacing: '1px', textTransform: 'uppercase', color: '#666', marginBottom: '10px' }}>Operational Mode</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div 
+                  onClick={() => { if(formData.depth !== 'lighter') setFormData({...formData, mode: 'strict'}) }}
+                  style={{ padding: '12px', borderRadius: '12px', border: formData.mode === 'strict' ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)', background: formData.mode === 'strict' ? 'rgba(0,0,0,0.05)' : '#f8f9fa', cursor: formData.depth === 'lighter' ? 'not-allowed' : 'pointer', opacity: formData.depth === 'lighter' ? 0.5 : 1, transition: 'all 0.2s', display: 'flex', alignItems: 'flex-start', gap: '12px' }}
+                >
+                  <input type="radio" checked={formData.mode === 'strict'} readOnly style={{ accentColor: '#333', marginTop: '4px' }} />
+                  <div>
+                    <strong style={{ color: formData.mode === 'strict' ? '#333' : '#333', display: 'block', fontSize: '1rem', marginBottom: '4px' }}>Strict (Exact Match Only)</strong>
+                    <p style={{ fontSize: '0.85rem', color: '#666', margin: 0, lineHeight: '1.4' }}>
+                      Rely strictly on exact handles and graph-crawled profiles. If missing, do not search by name. Zero LLM tokens wasted.
+                    </p>
+                  </div>
+                </div>
+
+                <div 
                   onClick={() => { if(formData.depth !== 'lighter') setFormData({...formData, mode: 'transparent'}) }}
                   style={{ padding: '12px', borderRadius: '12px', border: formData.mode === 'transparent' ? '2px solid var(--success-color)' : '1px solid rgba(0,0,0,0.1)', background: formData.mode === 'transparent' ? 'rgba(40,199,111,0.05)' : '#f8f9fa', cursor: formData.depth === 'lighter' ? 'not-allowed' : 'pointer', opacity: formData.depth === 'lighter' ? 0.5 : 1, transition: 'all 0.2s', display: 'flex', alignItems: 'flex-start', gap: '12px' }}
                 >
                   <input type="radio" checked={formData.mode === 'transparent'} readOnly style={{ accentColor: 'var(--success-color)', marginTop: '4px' }} />
                   <div>
-                    <strong style={{ color: formData.mode === 'transparent' ? 'var(--success-color)' : '#333', display: 'block', fontSize: '1rem', marginBottom: '4px' }}>Transparent (Human-in-the-Loop)</strong>
+                    <strong style={{ color: formData.mode === 'transparent' ? 'var(--success-color)' : '#333', display: 'block', fontSize: '1rem', marginBottom: '4px' }}>Transparent (Manual Fallback)</strong>
                     <p style={{ fontSize: '0.85rem', color: '#666', margin: 0, lineHeight: '1.4' }}>
-                      Phase 1 exact matches and Phase 3 LLM fallbacks will pause the engine and require your manual verification. Recommended for precise auditing.
+                      Perform name search for missing platforms and pause engine for manual UI verification. Zero LLM tokens wasted.
                     </p>
                   </div>
                 </div>
@@ -542,9 +570,9 @@ export default function DashboardTab() {
                 >
                   <input type="radio" checked={formData.mode === 'autonomous'} readOnly style={{ accentColor: 'var(--accent-color)', marginTop: '4px' }} />
                   <div>
-                    <strong style={{ color: formData.mode === 'autonomous' ? 'var(--accent-color)' : '#333', display: 'block', fontSize: '1rem', marginBottom: '4px' }}>Autonomous (AI Auto-Merge)</strong>
+                    <strong style={{ color: formData.mode === 'autonomous' ? 'var(--accent-color)' : '#333', display: 'block', fontSize: '1rem', marginBottom: '4px' }}>Autonomous (AI Fallback)</strong>
                     <p style={{ fontSize: '0.85rem', color: '#666', margin: 0, lineHeight: '1.4' }}>
-                      The engine will automatically merge the highest scoring candidates and seamlessly proceed without human intervention. Highly efficient.
+                      Perform name search and send candidates to LLM to automatically tiebreak. Highly efficient but uses LLM tokens.
                     </p>
                   </div>
                 </div>

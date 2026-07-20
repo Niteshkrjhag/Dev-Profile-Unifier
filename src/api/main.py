@@ -53,8 +53,9 @@ class ResolveRequest(BaseModel):
     workplace: Optional[str] = None
     gender: Optional[str] = None
     profession_status: Optional[str] = None
-    mode: str = 'transparent'
-    depth: str = 'normal'
+    mode: Optional[str] = 'transparent'
+    depth: Optional[str] = 'normal'
+    fallback_disambiguation: Optional[bool] = False
 
 @app.get("/health")
 async def health_check():
@@ -98,7 +99,8 @@ async def resolve_profile(payload: ResolveRequest):
             handles=handles, 
             user_metadata=user_metadata, 
             mode=payload.mode, 
-            depth=payload.depth
+            depth=payload.depth,
+            fallback_disambiguation=payload.fallback_disambiguation
         )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"External API Error: {str(e)}")

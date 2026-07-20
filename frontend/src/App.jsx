@@ -4,6 +4,8 @@ import DashboardTab from './tabs/DashboardTab';
 import AdminTab from './tabs/AdminTab';
 import MonitoringTab from './tabs/MonitoringTab';
 import DocsTab from './tabs/DocsTab';
+import TestingTab from './tabs/TestingTab';
+import { Bug } from 'lucide-react';
 
 function Sidebar() {
   const location = useLocation();
@@ -11,6 +13,7 @@ function Sidebar() {
   const links = [
     { path: '/', label: 'Search', icon: Search },
     { path: '/admin', label: 'Admin Audit', icon: ShieldAlert },
+    { path: '/testing', label: 'Testing', icon: Bug },
     { path: '/monitoring', label: 'Health', icon: Activity },
     { path: '/docs', label: 'Docs', icon: FileText },
   ];
@@ -52,6 +55,7 @@ function App() {
         <Routes>
           <Route path="/" element={<DashboardTab />} />
           <Route path="/admin" element={<AdminTab />} />
+          <Route path="/testing" element={<TestingTab />} />
           <Route path="/monitoring" element={<MonitoringTab />} />
           <Route path="/docs" element={<DocsTab />} />
         </Routes>
