@@ -105,7 +105,7 @@ export default function DashboardTab() {
     sessionStorage.removeItem('effiflo_debug_data');
 
     try {
-      const res = await fetch('http://localhost:8080/profiles/resolve', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/profiles/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -133,7 +133,7 @@ export default function DashboardTab() {
 
   const fetchCanonical = async (id) => {
     try {
-      const res = await fetch(`http://localhost:8080/profiles/${id}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/profiles/${id}`);
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.detail || 'Failed to fetch canonical profile');
@@ -174,7 +174,7 @@ export default function DashboardTab() {
     sessionStorage.removeItem('effiflo_debug_data');
 
     try {
-      const res = await fetch('http://localhost:8080/profiles/resolve', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/profiles/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedFormData)
@@ -216,7 +216,7 @@ export default function DashboardTab() {
     sessionStorage.removeItem('effiflo_debug_data');
 
     try {
-      const res = await fetch('http://localhost:8080/profiles/resolve', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/profiles/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedFormData)

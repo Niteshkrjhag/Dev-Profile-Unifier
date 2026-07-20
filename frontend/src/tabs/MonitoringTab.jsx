@@ -7,7 +7,7 @@ export default function MonitoringTab() {
   useEffect(() => {
     const fetchHealth = async () => {
       try {
-        const res = await fetch('http://localhost:8080/health');
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/health`);
         const data = await res.json();
         setMetrics(data.metrics);
       } catch (err) {

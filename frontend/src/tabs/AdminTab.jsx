@@ -9,7 +9,7 @@ export default function AdminTab() {
 
   const fetchLinks = async () => {
     try {
-      const res = await fetch('http://localhost:8080/admin/links');
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/admin/links`);
       const data = await res.json();
       setLinks(data);
     } catch (err) {
@@ -25,7 +25,7 @@ export default function AdminTab() {
 
   const handleUpdate = async (canonicalId, rawId, status) => {
     try {
-      const res = await fetch(`http://localhost:8080/admin/links/${canonicalId}/${rawId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/admin/links/${canonicalId}/${rawId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
