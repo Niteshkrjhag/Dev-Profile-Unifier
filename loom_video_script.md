@@ -1,47 +1,47 @@
 # Loom Video Presentation Script (10-15 Minutes)
 
 ## 1. Introduction (1 min)
-- **Hook**: "Hi, I'm Nitesh. Today I'm going to walk you through the Dev Profile Unifier, an intelligent Entity Resolution engine I built that aggregates fragmented developer footprints across GitHub, StackOverflow, Dev.to, and HackerNews."
-- **Demo**: Quickly open the frontend. Do a fast search using an exact handle (or a name you know works well) just to show the final unified profile UI, proving the app works right out of the gate.
+- **Hook**: "Hi, I'm Nitesh. Today I'm going to walk you through the Dev Profile Unifier. It's a smart search engine I built that acts like a detective—it finds a developer's scattered accounts across GitHub, StackOverflow, and other sites, and stitches them together into one clean profile."
+- **Demo**: Quickly open the frontend. Do a fast search using an exact handle just to show the final beautiful profile, proving the app works right out of the gate.
 
-## 2. Architecture & Data Flow (2.5 mins)
-- **Concept**: Explain how data flows from the React frontend to FastAPI, and then out to the external APIs.
-- **The Phases**:
-  - *"Our engine operates in distinct phases to protect rate limits and save LLM tokens."*
-  - **Phase 0**: Supabase Cache check. If the handles are known, short-circuit immediately.
-  - **Phase 1**: Disambiguation. If only a name is given, fetch top 5 candidates.
-  - **Phase 2**: The Graph Crawler. Explain how you recursively look for links inside bios and websites (e.g., finding a Twitter link in a GitHub bio) to deterministically link profiles.
-  - **Phase 3**: The LLM Tiebreaker. *"When deterministic crawling fails, we hand the raw JSON over to Gemini 3.5 Flash to act as a semantic resolution agent."*
+## 2. How It Works (Architecture) (2.5 mins)
+- **Concept**: Explain that the React frontend talks to the FastAPI backend, which then talks to the outside world.
+- **The Steps**:
+  - *"Our engine works in steps to save time and money."*
+  - **Step 0**: The Cache. *"Before doing any work, we check if we already know this person in our Supabase database. If we do, we show the results instantly."*
+  - **Step 1**: Disambiguation. *"If we only have a common name, we ask the platforms for their top 5 closest matches."*
+  - **Step 2**: The Graph Crawler. *"The engine acts like a detective. It looks at a GitHub bio to see if there's a Twitter link, and follows that link to find more accounts."*
+  - **Step 3**: The AI Tiebreaker. *"If the clues run dry, we hand the raw data over to Gemini 3.5 Flash. It acts as an AI detective, looking at how the developers code and write to figure out if two accounts belong to the exact same person."*
 
-## 3. Supabase Schema Deep Dive (2.5 mins)
+## 3. How We Store Data (Schema) (2.5 mins)
 - **Action**: Open your Supabase dashboard and show the tables.
 - **Why this design?**: 
-  - *"I chose a Star Schema. Instead of dumping everything into one massive user table, I separated the concept of a 'Human' from an 'Account'."*
-  - Show `canonical_entities`: *"This is the unified human."*
-  - Show `raw_profiles`: *"These are the immutable JSON snapshots from the platforms."*
-  - Show `entity_links`: *"This is the junction table. Notice the `confidence_score` and `status` columns. I designed it this way so that if the AI hallucinates a link, a human admin can reject it without deleting the underlying raw data."*
+  - *"I designed the database logically. I separated the concept of a 'Human Being' from a 'Platform Account'."*
+  - Show `canonical_entities`: *"This table represents the actual human."*
+  - Show `raw_profiles`: *"This table holds the raw account data from GitHub or StackOverflow."*
+  - Show `entity_links`: *"This is the bridge that connects the human to the account. If the AI is ever unsure, it flags this bridge as 'Pending Review' so an admin can double-check it. This makes the system very safe."*
 
-## 4. Entity Resolution in Action (Easy vs. Hard) (3 mins)
+## 4. Seeing It In Action (Easy vs. Hard) (3 mins)
 - **The Easy Case**: 
-  - Search for someone using explicit handles (e.g., providing both a GitHub and StackOverflow handle). 
-  - Show how the engine bypasses the LLM entirely, hits Phase 2, and links them deterministically. *"This cost 0 LLM tokens and took 2 seconds."*
+  - Search for someone using explicit handles. 
+  - *"Because we gave it exact handles, the engine bypassed the AI completely and just linked them together. This cost us zero money in AI tokens and took 2 seconds."*
 - **The Hard Case**:
-  - Search for a common name (like "Nitesh") using the **Autonomous AI Fallback** mode.
-  - Explain the Disambiguation UI. *"Here, the engine found multiple people. It used heuristics and LLM tiebreaking to try and find the right one."*
-  - Show the **Admin Audit** tab. *"Because this was a probabilistic match, it was flagged as 'pending_review' in the database for a human to verify."*
+  - Search for a common name (like "Nitesh") using the **Autonomous** mode.
+  - Show the Disambiguation UI. *"Here, the engine found multiple people. It used the AI to guess the right one."*
+  - Show the **Admin Audit** tab. *"Because the AI had to guess, it flagged it for a human to review. Here I can approve or reject the AI's work."*
 
 ## 5. A Tricky Bug & Edge Case (2 mins)
 - **The Infinite Loading / Timeout Bug**:
-  - *"One of the most interesting edge cases I hit was dealing with Render's 100-second serverless timeout."*
-  - *"Initially, when doing a name search, my engine pulled all 30 users returned by GitHub and did a deep fetch (repos, events) on ALL of them. This resulted in over 200 API calls firing concurrently. The backend took 3 minutes, and the frontend threw a 'Failed to fetch' error."*
-  - *"I solved it by optimizing Phase 1: I implemented a hard-cap to only do deep fetches on the top 5 candidates, reducing network volume by 83% and bringing resolution time down to 10 seconds."*
+  - *"One tricky bug I hit was a server timeout on Render. Render gives us 100 seconds to finish our work."*
+  - *"At first, when I searched a name, my engine pulled 30 users from GitHub and asked for all their data at once. This created over 200 requests! The server took 3 minutes and crashed."*
+  - *"I solved it by optimizing the search. Now, it only asks for deep data on the top 5 candidates. This dropped our network traffic by 83% and made the app super fast again."*
 
-## 6. Observability & Production Readiness (1.5 mins)
+## 6. Keeping Track of Health (Observability) (1.5 mins)
 - **Action**: Click on the **Health** tab in your UI.
-- *"Because LLMs and third-party APIs are expensive and rate-limited, I built a custom Observability Tracker."*
-- Point out the Token counts and API request limits.
-- *"If I were taking this to production, I would export these metrics to Prometheus and Grafana, and set up alerts for when our GitHub rate limits drop below 10%."*
+- *"Because AI and external platforms limit how much we can use them, I built a Health Tracker."*
+- Point out the Token counts and API requests.
+- *"In a real-world scenario, I would set up alerts so that if our GitHub limits drop too low, the engineering team gets a notification."*
 
-## 7. Next Week / Conclusion (1 min)
-- *"If I had another week, I would focus entirely on latency and predictive graph building. I want to build a connectivity graph for all candidates instantly before the user even selects one. I'd also rewrite the GitHub fetcher to use GraphQL to fetch everything in a single request, minimizing API overhead."*
+## 7. Next Week (1 min)
+- *"If I had another week, I'd make the app even faster. Instead of asking GitHub for information 7 times for one person, I'd use a technology called GraphQL to get all the data in one single request. I'd also make the engine instantly build connection graphs for all candidates at the same time, making it easier for the user to select the right person."*
 - **Outro**: Thank them for their time.
