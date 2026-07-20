@@ -24,6 +24,35 @@ When a user searches for a developer, the engine processes the request in distin
 4. **Phase 3 (LLM Tiebreaker)**: If deterministic links are missing, the engine sends the raw profile data to an AI model (**Gemini 3.5 Flash**). The AI acts as a semantic resolution agent, analyzing coding languages and writing styles to determine if two accounts belong to the exact same human.
 5. **Phase 4 (Summary Generation)**: Finally, the AI generates a concise, professional summary combining all the unified data.
 
+```mermaid
+graph TD
+    A[User Request] --> B{Phase 0: Cache Check}
+    B -- Hit --> C[Return Cached Profile]
+    B -- Miss --> D{Explicit Handles?}
+    
+    D -- Yes --> F[Phase 2: Graph Crawler]
+    D -- No (Name Only) --> E[Phase 1: Disambiguation Search]
+    
+    E --> E1{Engine Mode?}
+    E1 -- Strict --> E2[Halt: Require Manual Links]
+    E1 -- Transparent --> E3[Return Multiple Choices to UI]
+    E1 -- Autonomous --> E4[LLM Phase 1 Tiebreaker]
+    
+    E4 -- Success --> F
+    E4 -- Failure --> E3
+    E3 -- User Selects Match --> F
+    
+    F --> G[Crawl Platforms for External Links]
+    G --> I{Missing Platforms?}
+    
+    I -- No --> L[Phase 4: Generate LLM Summary]
+    I -- Yes --> J[Phase 3: Fallback Name Search]
+    J --> K[LLM Semantic Tiebreaker]
+    K --> L
+    
+    L --> M[Store in DB & Return Unified Profile]
+```
+
 ## Schema Design
 
 We use a **Star Schema** in Supabase to keep our data structured and safe:
@@ -31,6 +60,8 @@ We use a **Star Schema** in Supabase to keep our data structured and safe:
 - **`canonical_entities`**: The single source of truth representing a unique human being.
 - **`raw_profiles`**: Immutable JSON snapshots of individual platform accounts (e.g., a specific GitHub account).
 - **`entity_links`**: A junction table that bridges a `raw_profile` to a `canonical_entity`. 
+- **`search_cache`**: Caches the heavy cross-platform candidate searches to reduce API spam.
+- **`api_metrics`**: A centralized table for logging API calls and tracking external rate limits in real-time.
 
 If the AI is uncertain about a match, it flags the `entity_link` with a "Pending Review" status. This allows a human administrator to manually approve or reject the AI's decision without deleting the underlying raw data.
 
