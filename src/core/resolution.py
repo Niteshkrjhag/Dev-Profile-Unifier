@@ -94,7 +94,7 @@ class ProfileResolver:
         Executes the Iterative Graph Crawler & LLM Tiebreaker resolution pipeline.
         Returns the unified canonical entity ID.
         """
-        tracker.record_resolution_time(0) # initialize
+        # Initialize pipeline
         start_time = asyncio.get_event_loop().time()
         resolution_warnings = []
         
