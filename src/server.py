@@ -23,6 +23,10 @@ resolver = ProfileResolver()
 db = SupabaseDB()
 # tracker imported directly from observability.py
 
+@app.on_event("startup")
+async def startup_event():
+    await tracker.start_flusher()
+
 @app.get("/")
 async def root():
     return {

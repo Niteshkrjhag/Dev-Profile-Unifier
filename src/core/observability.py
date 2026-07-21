@@ -35,27 +35,33 @@ class ObservabilityTracker:
                     "average_time_ms": 0
                 }
             }
-            # Start background flusher safely
-            try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(cls._instance._background_flush())
-            except RuntimeError:
-                pass # Event loop not running yet
+            # Background flusher will be started explicitly via start_flusher()
         return cls._instance
 
-    async def _background_flush(self):
+    async def start_flusher(self):
+        """Called on app startup to load state and begin flushing."""
         db = SupabaseDB()
+        try:
+            # Load initial global state from DB
+            res = await asyncio.to_thread(db.client.table("observability_metrics").select("metrics").eq("id", "global").execute)
+            if res.data:
+                # We merge existing DB metrics with our initial zeros
+                db_metrics = res.data[0]["metrics"]
+                self.metrics["total_api_calls"].update(db_metrics.get("total_api_calls", {}))
+                self.metrics["github_rate_limit"].update(db_metrics.get("github_rate_limit", {}))
+                self.metrics["llm"].update(db_metrics.get("llm", {}))
+                self.metrics["resolutions"].update(db_metrics.get("resolutions", {}))
+        except Exception as e:
+            print(f"Observability load error: {e}")
+
+        # Start the background task
+        asyncio.create_task(self._background_flush(db))
+
+    async def _background_flush(self, db):
         while True:
-            await asyncio.sleep(15)
+            await asyncio.sleep(5) # Flush every 5s for the demo
             try:
-                # Fetch global state
-                res = await asyncio.to_thread(db.client.table("observability_metrics").select("metrics").eq("id", "global").execute)
-                global_metrics = res.data[0]["metrics"] if res.data else self.metrics
-                
-                # We could merge the metrics here for true multi-worker accuracy.
-                # For simplicity in this demo, we'll just push our local memory to global.
-                # A robust solution would increment the global numbers by our local delta.
-                db.client.table("observability_metrics").upsert({"id": "global", "metrics": self.metrics}).execute()
+                await asyncio.to_thread(db.client.table("observability_metrics").upsert, {"id": "global", "metrics": self.metrics})
             except Exception:
                 pass # Fail silently in background
 
