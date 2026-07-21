@@ -595,6 +595,19 @@ export default function DashboardTab() {
                     </p>
                   </div>
                 </div>
+
+                <div 
+                  onClick={() => setFormData({...formData, mode: 'hybrid'})}
+                  style={{ padding: '12px', borderRadius: '12px', border: formData.mode === 'hybrid' ? '2px solid #FF9F43' : '1px solid rgba(0,0,0,0.1)', background: formData.mode === 'hybrid' ? 'rgba(255,159,67,0.05)' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'flex-start', gap: '12px' }}
+                >
+                  <input type="radio" checked={formData.mode === 'hybrid'} readOnly style={{ accentColor: '#FF9F43', marginTop: '4px' }} />
+                  <div>
+                    <strong style={{ color: formData.mode === 'hybrid' ? '#FF9F43' : '#333', display: 'block', fontSize: '1rem', marginBottom: '4px' }}>Hybrid (AI Anchor + Strict Crawler)</strong>
+                    <p style={{ fontSize: '0.85rem', color: '#666', margin: 0, lineHeight: '1.4' }}>
+                      Uses AI to resolve the initial name search, but strictly relies on exact bio links for other platforms (skips fallback guessing). Fast & deterministic.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 

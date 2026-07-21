@@ -40,7 +40,7 @@ graph TD
         Fetch1 --> SaveCache[(Save to Search Cache)]
         SaveCache --> Mode1
         
-        Mode1 -- "Autonomous" --> AI1[AI Selects Best Match]
+        Mode1 -- "Autonomous / Hybrid" --> AI1[AI Selects Best Match]
         Mode1 -- "Transparent / Strict" --> AskUser1([Ask User to Pick Match])
         AI1 -- "AI Uncertain" --> AskUser1
     end
@@ -61,7 +61,7 @@ graph TD
 
     subgraph "Phase 4: Summarization"
         Missing -- "No" --> Final[Generate AI Summary]
-        Mode3 -- "Strict (Skip Fallback)" --> Final
+        Mode3 -- "Strict / Hybrid" --> Final
         AI3 -- "AI Confident" --> Final
         AskUser2 -- "User Selects" --> Final
         Final --> DB[Save Identity to Database]

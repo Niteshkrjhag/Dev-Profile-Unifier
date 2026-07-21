@@ -205,7 +205,7 @@ class ProfileResolver:
                 
                 await asyncio.to_thread(self.db.save_search_cache, query_hash, candidates)
                 
-            if mode == 'autonomous' and candidates:
+            if mode in ['autonomous', 'hybrid'] and candidates:
                 # Use LLM to tiebreak without anchor on top 5 candidates
                 top_candidates = candidates[:5]
                 best_idx, conf, reason, tokens = await self.llm.evaluate_candidates_without_anchor(name, user_metadata, top_candidates)
@@ -304,7 +304,8 @@ class ProfileResolver:
         
         # FEATURE: Engine Configurations
         # 'strict' mode completely disables fallback searching and relies purely on explicit links
-        if mode == 'strict':
+        # 'hybrid' mode uses AI for Phase 1 tiebreaker, but skips Phase 3 completely
+        if mode in ['strict', 'hybrid']:
             missing_platforms = []
             
         if missing_platforms and name:
