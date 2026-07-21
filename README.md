@@ -26,23 +26,29 @@ When a user searches for a developer, the engine processes the request in distin
 
 ```mermaid
 graph TD
-    Start([User Submits Search]) --> Phase0{Phase 0: Cache Check}
-    Phase0 -- "Complete Match" --> End([Show Profile])
-    Phase0 -- "Missing Data" --> HasHandles{Provided Handles?}
+    Start([User Submits Search]) --> HasHandles{Provided Handles?}
+    
+    %% Phase 0 (Only if handles provided)
+    HasHandles -- "Yes" --> Phase0{Phase 0: Identity Cache}
+    Phase0 -- "All Handles Cached" --> End([Show Profile])
+    Phase0 -- "New Handles Provided" --> Phase2
 
     subgraph "Phase 1: Disambiguation"
-        HasHandles -- "No" --> Search1[Search by Name]
-        Search1 --> Mode1{Engine Mode?}
+        HasHandles -- "No" --> SearchCache{Phase 1: Search Cache}
+        SearchCache -- "Hit" --> Mode1{Engine Mode?}
+        SearchCache -- "Miss" --> Fetch1[Fetch Name from APIs]
+        Fetch1 --> SaveCache[(Save to Search Cache)]
+        SaveCache --> Mode1
+        
         Mode1 -- "Autonomous" --> AI1[AI Selects Best Match]
         Mode1 -- "Transparent / Strict" --> AskUser1([Ask User to Pick Match])
         AI1 -- "AI Uncertain" --> AskUser1
     end
 
     subgraph "Phase 2: Graph Crawler"
-        HasHandles -- "Yes" --> Crawl[Scrape Profiles for Bio Links]
-        AskUser1 -- "User Selects" --> Crawl
-        AI1 -- "AI Confident" --> Crawl
-        Crawl --> Extract[Find Connected Accounts]
+        AskUser1 -- "User Selects" --> Phase2[Scrape Profiles for Bio Links]
+        AI1 -- "AI Confident" --> Phase2
+        Phase2 --> Extract[Find Connected Accounts]
     end
 
     subgraph "Phase 3: Fallback Search"
@@ -58,7 +64,7 @@ graph TD
         Mode3 -- "Strict (Skip Fallback)" --> Final
         AI3 -- "AI Confident" --> Final
         AskUser2 -- "User Selects" --> Final
-        Final --> DB[Save to Database]
+        Final --> DB[Save Identity to Database]
         DB --> End
     end
 ```

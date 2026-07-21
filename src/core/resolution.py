@@ -156,59 +156,54 @@ class ProfileResolver:
             query_hash = hashlib.md5(query_str.encode()).hexdigest()
             
             cached_candidates = await asyncio.to_thread(self.db.get_search_cache, query_hash)
-            if cached_candidates:
-                tracker.record_resolution_time((asyncio.get_event_loop().time() - start_time) * 1000)
-                return {
-                    "status": "multiple_choices",
-                    "canonical_id": None,
-                    "message": "Name-only search requires human verification. Please select the correct profile.",
-                    "candidates": cached_candidates
-                }
-
-            # We must fetch top candidates and return 300 Multiple Choices to force HITL Anchor selection.
-            candidates = []
-            results = await asyncio.gather(
-                self.fetchers["github"].search_by_name(name),
-                self.fetchers["stackoverflow"].search_by_name(name),
-                self.fetchers["devto"].search_by_name(name),
-                self.fetchers["hackernews"].search_by_name(name),
-                return_exceptions=True
-            )
-            for platform_name, plat_res in zip(["github", "stackoverflow", "devto", "hackernews"], results):
-                if isinstance(plat_res, Exception):
-                    resolution_warnings.append(f"{platform_name} Phase 1 failed: {str(plat_res)}")
-                    debug_data["phase_1_raw"][platform_name] = []
-                    continue
-                debug_data["phase_1_raw"][platform_name] = plat_res
-                for c in plat_res:
-                    c["platform"] = platform_name
-                    match_score = 0
-                    if user_metadata:
-                        # Heuristically check if metadata strings exist in the raw JSON payload
-                        raw_text = str(c).lower()
-                        if user_metadata.get("location") and user_metadata["location"].lower() in raw_text:
-                            match_score += 1
-                        if user_metadata.get("workplace") and user_metadata["workplace"].lower() in raw_text:
-                            match_score += 1
-                        
-                    candidates.append({
-                        "platform": platform_name, 
-                        "handle": c.get("handle", "unknown"), 
-                        "match_score": match_score,
-                        "data": c
-                    })
-                
-            if not candidates:
-                return {
-                    "status": "error",
-                    "canonical_id": None,
-                    "message": f"No candidates found for the name '{name}' across primary platforms."
-                }
-                
-            # Sort candidates by match_score descending
-            candidates.sort(key=lambda x: x["match_score"], reverse=True)
             
-            await asyncio.to_thread(self.db.save_search_cache, query_hash, candidates)
+            if cached_candidates:
+                candidates = cached_candidates
+            else:
+                # We must fetch top candidates and return 300 Multiple Choices to force HITL Anchor selection.
+                candidates = []
+                results = await asyncio.gather(
+                    self.fetchers["github"].search_by_name(name),
+                    self.fetchers["stackoverflow"].search_by_name(name),
+                    self.fetchers["devto"].search_by_name(name),
+                    self.fetchers["hackernews"].search_by_name(name),
+                    return_exceptions=True
+                )
+                for platform_name, plat_res in zip(["github", "stackoverflow", "devto", "hackernews"], results):
+                    if isinstance(plat_res, Exception):
+                        resolution_warnings.append(f"{platform_name} Phase 1 failed: {str(plat_res)}")
+                        debug_data["phase_1_raw"][platform_name] = []
+                        continue
+                    debug_data["phase_1_raw"][platform_name] = plat_res
+                    for c in plat_res:
+                        c["platform"] = platform_name
+                        match_score = 0
+                        if user_metadata:
+                            # Heuristically check if metadata strings exist in the raw JSON payload
+                            raw_text = str(c).lower()
+                            if user_metadata.get("location") and user_metadata["location"].lower() in raw_text:
+                                match_score += 1
+                            if user_metadata.get("workplace") and user_metadata["workplace"].lower() in raw_text:
+                                match_score += 1
+                            
+                        candidates.append({
+                            "platform": platform_name, 
+                            "handle": c.get("handle", "unknown"), 
+                            "match_score": match_score,
+                            "data": c
+                        })
+                    
+                if not candidates:
+                    return {
+                        "status": "error",
+                        "canonical_id": None,
+                        "message": f"No candidates found for the name '{name}' across primary platforms."
+                    }
+                    
+                # Sort candidates by match_score descending
+                candidates.sort(key=lambda x: x["match_score"], reverse=True)
+                
+                await asyncio.to_thread(self.db.save_search_cache, query_hash, candidates)
                 
             if mode == 'autonomous' and candidates:
                 # Use LLM to tiebreak without anchor on top 5 candidates
