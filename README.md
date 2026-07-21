@@ -1,5 +1,9 @@
 # Dev Profile Unifier
 
+![Dev Profile Unifier Dashboard](https://github.com/user-attachments/assets/5b5474d6-8945-4ec1-b836-92f5c0eaa074)
+
+**🚀 Live Demo / Deployment:** [Vercel Deployment Link](https://vercel.com/niteshkrjhags-projects/dev-profile-unifier/GvokVr2itpzaR4n3sTMUrPgFMuoH)
+
 An intelligent Entity Resolution engine that aggregates a developer's fragmented footprint across GitHub, StackOverflow, Dev.to, and HackerNews into a single, unified canonical profile.
 
 ## Table of Contents

@@ -31,10 +31,9 @@
   - Show the **Admin Audit** tab. *"Because this was a probabilistic AI match, it was flagged for human review in our database. The admin can reject it if the heuristic was wrong."*
 
 ## 5. A Tricky Bug & Edge Case (2 mins)
-- **The Observability Event Loop Bug**:
-  - *"One of the most interesting bugs I hit was building my Singleton Observability Tracker in FastAPI."*
-  - *"I noticed my dashboard metrics kept resetting to zero. It turns out I was initializing the tracker at 'import time' before the Uvicorn asynchronous event loop had started. This caused the background Supabase flusher to throw a silent `RuntimeError`."*
-  - *"I solved it by moving the tracker initialization into a dedicated `@app.on_event('startup')` FastAPI hook. Now, it correctly queries Supabase for the global historical metrics before starting the flusher, ensuring persistent telemetry."*
+- **The Identity Collision Edge Case**:
+  - *"One of the most dangerous edge cases I discovered was 'Identity Bleeding'. I realized that if a user manually submitted a search with two handles that actually belonged to two completely *different* known people in our database (e.g., Jane's GitHub and John's StackOverflow), the engine might silently merge them together into a single Canonical Entity."*
+  - *"To fix this, I engineered a hard-stop in Phase 0. Before any processing happens, the engine maps all provided handles to their known `canonical_id`. If it detects more than one distinct ID, it throws an `Identity Collision` error and aborts. This is a critical safeguard that protects the integrity of our Star Schema."*
 
 ## 6. Observability & Production Readiness (1.5 mins)
 - **Action**: Click on the **Monitoring** tab in your UI.
