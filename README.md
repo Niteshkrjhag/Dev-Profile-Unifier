@@ -93,6 +93,15 @@ Our strategy balances execution speed, API rate limits, and accuracy:
 2. **N-Gram Heuristic Filter**: We use lightweight string matching on locations and company names to quickly discard obvious mismatches before they reach the AI.
 3. **Semantic LLM Matching**: For complex disambiguation, we use Large Language Models (LLMs) to catch nuanced signals that traditional code might miss, like shared obscure repositories.
 
+### Preventing Identity Collision (Engine Modes)
+The biggest risk in identity resolution across any integrated platform (e.g., GitHub, StackOverflow, Dev.to, HackerNews, etc.) is **Identity Collision**—accidentally merging two different people into the same canonical profile. Our system uses a multi-phase defense to prevent this:
+
+- **Phase 0 Hard-Stop**: If a user provides handles that belong to two *different* known canonical profiles in our database, the engine throws a hard error and aborts to protect data integrity.
+- **Strict Mode**: Zero AI allowed. We only link accounts if the Graph Crawler finds a direct hyperlink in their bio. 100% safe.
+- **Transparent Mode**: Highly manual. If we find multiple potential accounts, we pause and force the user to manually click the correct one via a UI modal.
+- **Autonomous Mode**: The LLM reads all candidates and picks the winner. If it gets confused (score < 85%), it falls back to Transparent mode and asks the user.
+- **Hybrid Mode**: We use the LLM to guess, but if the LLM gets confused, *we don't bother the user with a popup*. The engine quietly intercepts the failure, auto-selects the highest-scoring heuristic match from Phase 1, and proceeds.
+
 ## Observability
 
 Because AI tokens and external API calls are expensive and heavily rate-limited, we built a custom Observability Tracker. 
