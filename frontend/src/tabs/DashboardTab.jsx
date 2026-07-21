@@ -62,7 +62,7 @@ export default function DashboardTab() {
     return {
       name: parsed.name || '', github: parsed.github || '', stackoverflow: parsed.stackoverflow || '', devto: parsed.devto || '', hackernews: parsed.hackernews || '',
       location: parsed.location || '', workplace: parsed.workplace || '', gender: parsed.gender || '', profession_status: parsed.profession_status || '',
-      mode: parsed.mode || 'autonomous', depth: parsed.depth || 'lighter'
+      mode: parsed.mode || 'hybrid', depth: parsed.depth || 'lighter'
     };
   });
   const [loading, setLoading] = useState(false);
