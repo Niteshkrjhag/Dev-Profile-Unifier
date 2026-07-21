@@ -112,12 +112,20 @@ class ProfileResolver:
             handles = {}
 
         # Phase 0: Cache Check
-        existing_canonical_id = None
+        found_canonical_ids = set()
         for platform, handle in handles.items():
             cached_id = await asyncio.to_thread(self.db.find_canonical_by_handle, platform, handle)
             if cached_id:
-                existing_canonical_id = cached_id
-                break
+                found_canonical_ids.add(cached_id)
+                
+        if len(found_canonical_ids) > 1:
+            return {
+                "status": "error",
+                "message": "Identity Collision: The handles provided belong to multiple different known profiles in our database. Please search them separately.",
+                "canonical_id": None
+            }
+            
+        existing_canonical_id = found_canonical_ids.pop() if found_canonical_ids else None
 
         if existing_canonical_id:
             profile = await asyncio.to_thread(self.db.get_full_canonical_profile, existing_canonical_id)
