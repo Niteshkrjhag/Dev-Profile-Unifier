@@ -222,6 +222,11 @@ class ProfileResolver:
                 if best_idx != -1 and 0 <= best_idx < len(top_candidates) and conf >= 0.85:
                     top_cand = top_candidates[best_idx]
                     handles[top_cand["platform"]] = top_cand["handle"]
+                elif mode == 'hybrid':
+                    # Hybrid Mode Feature: If LLM is confused, DO NOT ask the user. Just take the top heuristic candidate.
+                    top_cand = candidates[0]
+                    handles[top_cand["platform"]] = top_cand["handle"]
+                    resolution_warnings.append(f"Hybrid Mode: AI was uncertain. Auto-selected top heuristic candidate {top_cand['platform']}:{top_cand['handle']}.")
                 else:
                     return {
                         "status": "multiple_choices",
