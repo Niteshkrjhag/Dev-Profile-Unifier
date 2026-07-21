@@ -5,47 +5,47 @@ export default function DocsTab() {
     <div className="animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto', paddingBottom: '40px' }}>
       <div style={{ marginBottom: '32px' }}>
         <h1>Engineering Documentation</h1>
-        <p>A high-level overview of the Effiflo Dev Profile Unifier methodology and architecture.</p>
+        <p>A quick breakdown of how the Dev Profile Unifier actually works under the hood.</p>
       </div>
 
       <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
 
         <section>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>1. What it is</h2>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>1. What this actually is</h2>
           <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            <strong>The Dev Profile Unifier</strong> is an automated identity resolution engine. In plain English, it is a system that takes a developer's scattered online footprints (like their GitHub, StackOverflow, and HackerNews accounts) and mathematically proves they belong to the exact same human being, merging them into one unified profile.
+            Basically, it's an automated identity resolution engine. We take a developer's scattered footprints across different platforms (GitHub, StackOverflow, HackerNews, Dev.to, etc.) and programmatically prove they belong to the exact same human being, rolling them up into one canonical profile.
           </p>
         </section>
 
         <section>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>2. Why it exists</h2>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>2. Why we built it</h2>
           <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            Developers rarely use the same username across all platforms, and they rarely link all their accounts together in one place. Traditional sourcing relies on humans manually Googling names and guessing if "karan123" on GitHub is the same as "karan_dev" on StackOverflow. This system exists to eliminate that manual guesswork, providing recruiters and engineering managers with a perfectly verified, 360-degree view of a developer's actual skills and impact.
+            Developers almost never use the exact same username everywhere, and they rarely link all their accounts together. Normally, sourcers have to manually Google names and guess if "karan123" on GitHub is the same person as "karan_dev" on StackOverflow. We built this pipeline to completely automate that guesswork so you get a verified, 360-degree view of a dev's actual skill tree without the manual labor.
           </p>
         </section>
 
         <section>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '16px', color: 'var(--accent-color)' }}>3. How it works (The Resolution Process)</h2>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '16px', color: 'var(--accent-color)' }}>3. How the Pipeline Works</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ background: 'rgba(0,0,0,0.02)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
               <strong>Phase 0: Database Caching</strong><br />
-              If we've seen this profile before, we instantly return the unified data from our Supabase PostgreSQL database, saving costly API calls and rendering in milliseconds.
+              Before we even touch an external API, we hit our Supabase DB. If we've already resolved this person, we just pull the cached canonical profile and render it in milliseconds.
             </div>
             <div style={{ background: 'rgba(0,0,0,0.02)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
-              <strong>Phase 1: Disambiguation & Smart Caching</strong><br />
-              When searching by name, we query multiple platforms and use string matching (like location and workplace) to rank candidates. The results are cached so we don't bombard APIs if you reload the page.
+              <strong>Phase 1: Disambiguation</strong><br />
+              If you just search a common name, we concurrently query the platforms and use lightweight string matching (like checking their location or workplace) to rank the top candidates. We cache this so we don't spam the APIs on page reloads.
             </div>
             <div style={{ background: 'rgba(0,0,0,0.02)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
-              <strong>Phase 2: Recursive Graph Crawler</strong><br />
-              Once a profile is selected, we parse its raw JSON (bio links, websites) looking for explicit links to other platforms. If found, we recursively fetch them, ensuring 100% deterministic, mathematically proven links.
+              <strong>Phase 2: Graph Crawler (Deterministic)</strong><br />
+              Once we have a base profile (usually GitHub), we scrape the raw JSON for bio links, personal websites, or Twitter handles. If we find a literal URL pointing to another platform, we follow it. This gives us a 100% deterministic, mathematically proven link.
             </div>
             <div style={{ background: 'rgba(40,199,111,0.05)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid var(--success-color)' }}>
-              <strong>Phase 3: LLM Tiebreaker (Heuristic Fallback)</strong><br />
-              If platforms are still missing, we use Gemini 3.5 Flash AI to act as a human investigator. We feed it the anchor profile and the missing platform candidates. It looks for nuanced similarities (writing style, tech stack overlaps). Scores &gt;85% are auto-merged, while ambiguous matches are pushed to the Admin Audit console for manual review.
+              <strong>Phase 3: LLM Tiebreaker (Probabilistic)</strong><br />
+              If their bio is empty, we fall back to AI. We dump the JSON of the base profile and the missing platform candidates into Gemini 3.5 Flash. It acts like a human investigator, comparing tech stacks and repos. High scores (&gt;85%) get auto-merged, low scores get pushed to the Admin console for a human to review.
             </div>
             <div style={{ background: 'rgba(0,0,0,0.02)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
-              <strong>Phase 4: Executive Summary Generation</strong><br />
-              Finally, we feed the massively unified data payload back to Gemini to generate a single, highly readable executive summary of the developer's entire career.
+              <strong>Phase 4: Executive Summary</strong><br />
+              Finally, we feed the massively unified payload back to the LLM to generate a quick, readable summary of their entire career.
             </div>
           </div>
         </section>
@@ -65,20 +65,20 @@ export default function DocsTab() {
         </section>
 
         <section>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>5. Benefits</h2>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>5. Why this architecture rocks</h2>
           <ul style={{ color: 'var(--text-secondary)', lineHeight: 1.6, paddingLeft: '20px' }}>
-            <li style={{ marginBottom: '8px' }}><strong>Extreme Accuracy:</strong> By relying on recursive graph traversal first, we guarantee deterministic links before ever relying on AI guesses.</li>
-            <li style={{ marginBottom: '8px' }}><strong>Fault Tolerance:</strong> Deep integration with asyncio guarantees non-blocking execution, while rate limit interceptions prevent infinite retry loops from destroying the server.</li>
-            <li style={{ marginBottom: '8px' }}><strong>Human-in-the-Loop (HITL):</strong> The Admin Audit console ensures the AI never makes destructive merges without human oversight on edge cases.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Safety First:</strong> By forcing the Graph Crawler to run first, we guarantee deterministic links before we ever let the AI start guessing.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Async Everything:</strong> The FastAPI backend uses heavily integrated `asyncio` to fetch all these APIs concurrently, so the whole resolution process doesn't block.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Human-in-the-Loop (HITL):</strong> The Admin Audit console means the AI can never permanently trash our Star Schema database without a human signing off on edge cases.</li>
           </ul>
         </section>
 
         <section>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>6. Limitations (Why NOT to use it)</h2>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>6. The Catch (Limitations)</h2>
           <ul style={{ color: 'var(--text-secondary)', lineHeight: 1.6, paddingLeft: '20px' }}>
-            <li style={{ marginBottom: '8px' }}><strong>API Rate Limiting:</strong> Free-tier GitHub and StackOverflow APIs aggressively throttle requests. At massive scale, enterprise API tokens are strictly required.</li>
-            <li style={{ marginBottom: '8px' }}><strong>LLM Hallucinations:</strong> While the tiebreaker is highly accurate, LLMs can occasionally misinterpret generic tech stacks (e.g., assuming two React developers in London are the same person). This is why the Human-in-the-Loop audit is mandatory for scores under 85%.</li>
-            <li style={{ marginBottom: '8px' }}><strong>Context Window Bloat:</strong> Extremely active developers with thousands of repositories can exceed LLM token limits (160k chars), requiring aggressive JSON pruning which risks dropping nuanced data.</li>
+            <li style={{ marginBottom: '8px' }}><strong>API Rate Limiting:</strong> Free-tier APIs aggressively throttle us. If you want to run this at enterprise scale, you absolutely need paid API tokens.</li>
+            <li style={{ marginBottom: '8px' }}><strong>LLM Hallucinations:</strong> The tiebreaker is great, but LLMs can sometimes get tricked by generic tech stacks (e.g., assuming two React devs in London are the same person). That's why the Admin Audit is mandatory.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Context Window Bloat:</strong> If a dev has thousands of repos, their JSON payload can blow up the LLM token limits (160k chars), meaning we have to aggressively prune the JSON and might lose nuanced data.</li>
           </ul>
         </section>
 
