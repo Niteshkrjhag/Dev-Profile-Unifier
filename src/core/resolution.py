@@ -400,14 +400,15 @@ class ProfileResolver:
                             
                         if err:
                             resolution_warnings.append(f"LLM Tiebreaker unavailable/failed for {platform}: {str(err)}")
-                            for cand in candidates:
+                            if candidates:
+                                cand = candidates[0]
                                 cand_handle = cand.get("handle", "unknown")
                                 raw_id = await asyncio.to_thread(self.db.find_raw_profile_id, platform, cand_handle)
                                 if not raw_id:
                                     raw_id = await asyncio.to_thread(self.db.insert_raw_profile, platform, cand_handle, cand)
-                                await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, 0.0, reason_text, "pending_review")
+                                await asyncio.to_thread(self.db.link_profile, canonical_id, raw_id, 0.0, f"LLM Error: {str(err)}", "pending_review")
                                 ambiguous_matches.append({
-                                    "platform": platform, "handle": cand_handle, "confidence": 0.0, "reason": reason_text, "raw_id": raw_id, "data": cand, "match_score": 0
+                                    "platform": platform, "handle": cand_handle, "confidence": 0.0, "reason": f"LLM Error: {str(err)}", "raw_id": raw_id, "data": cand, "match_score": cand.get("match_score", 0)
                                 })
                             continue
                             
