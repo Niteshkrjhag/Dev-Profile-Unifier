@@ -61,7 +61,9 @@ class ObservabilityTracker:
         while True:
             await asyncio.sleep(5) # Flush every 5s for the demo
             try:
-                await asyncio.to_thread(db.client.table("observability_metrics").upsert, {"id": "global", "metrics": self.metrics})
+                def do_upsert():
+                    db.client.table("observability_metrics").upsert({"id": "global", "metrics": self.metrics}).execute()
+                await asyncio.to_thread(do_upsert)
             except Exception:
                 pass # Fail silently in background
 
