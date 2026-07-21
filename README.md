@@ -94,13 +94,13 @@ Our strategy balances execution speed, API rate limits, and accuracy:
 3. **Semantic LLM Matching**: For complex disambiguation, we use Large Language Models (LLMs) to catch nuanced signals that traditional code might miss, like shared obscure repositories.
 
 ### Preventing Identity Collision (Engine Modes)
-The biggest risk in identity resolution across any integrated platform (e.g., GitHub, StackOverflow, Dev.to, HackerNews, etc.) is **Identity Collision**—accidentally merging two different people into the same canonical profile. Our system uses a multi-phase defense to prevent this:
+The biggest headache when pulling profiles across different platforms (GitHub, StackOverflow, Dev.to, HackerNews, etc.) is **Identity Collision**—basically, merging Jane's GitHub with John's StackOverflow by accident and corrupting the canonical profile. To prevent this, we built a few fallback layers:
 
-- **Phase 0 Hard-Stop**: If a user provides handles that belong to two *different* known canonical profiles in our database, the engine throws a hard error and aborts to protect data integrity.
-- **Strict Mode**: Zero AI allowed. We only link accounts if the Graph Crawler finds a direct hyperlink in their bio. 100% safe.
-- **Transparent Mode**: Highly manual. If we find multiple potential accounts, we pause and force the user to manually click the correct one via a UI modal.
-- **Autonomous Mode**: The LLM reads all candidates and picks the winner. If it gets confused (score < 85%), it falls back to Transparent mode and asks the user.
-- **Hybrid Mode**: We use the LLM to guess, but if the LLM gets confused, *we don't bother the user with a popup*. The engine quietly intercepts the failure, auto-selects the highest-scoring heuristic match from Phase 1, and proceeds.
+- **Phase 0 Hard-Stop**: If someone explicitly passes in handles that already map to two *different* people in our DB, we immediately throw an error and abort. We never silently merge them.
+- **Strict Mode**: No AI involved. We only link accounts if we find a literal URL pointing to it in their bio (like a Twitter link in a GitHub readme). It's 100% deterministic and safe.
+- **Transparent Mode**: Pure human-in-the-loop. If we get multiple hits for a name search, we pause the pipeline and pop up a modal asking the user to manually pick the right one.
+- **Autonomous Mode**: We dump the candidate JSONs into the LLM and let it guess. If the AI isn't super confident (score < 85%), it bails out and falls back to Transparent mode.
+- **Hybrid Mode**: This is what we use to prevent UI fatigue. The LLM tries to guess, but if it gets confused, instead of bothering the user with a popup, the backend just quietly takes the top heuristic match from Phase 1 and moves on.
 
 ## Observability
 

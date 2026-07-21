@@ -53,14 +53,14 @@ export default function DocsTab() {
         <section>
           <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--accent-color)' }}>4. Preventing Identity Collision (Engine Modes)</h2>
           <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            The biggest risk in identity resolution across any integrated platform (e.g., GitHub, StackOverflow, Dev.to, HackerNews, etc.) is <strong>Identity Collision</strong>—accidentally merging two different people into the same canonical profile. Our system uses a multi-phase defense to prevent this:
+            The biggest headache when pulling profiles across different platforms (GitHub, StackOverflow, Dev.to, HackerNews, etc.) is <strong>Identity Collision</strong>—basically, merging Jane's GitHub with John's StackOverflow by accident and corrupting the canonical profile. To prevent this, we built a few fallback layers:
           </p>
           <ul style={{ color: 'var(--text-secondary)', lineHeight: 1.6, paddingLeft: '20px', marginTop: '12px' }}>
-            <li style={{ marginBottom: '8px' }}><strong>Phase 0 Hard-Stop:</strong> If a user provides handles that belong to two <i>different</i> known canonical profiles in our database, the engine throws a hard error and aborts to protect data integrity.</li>
-            <li style={{ marginBottom: '8px' }}><strong>Strict Mode:</strong> Zero AI allowed. We only link accounts if the Graph Crawler finds a direct hyperlink in their bio. 100% safe and deterministic.</li>
-            <li style={{ marginBottom: '8px' }}><strong>Transparent Mode:</strong> Highly manual. If we find multiple potential accounts, we pause and force the user to manually click the correct one via a UI modal.</li>
-            <li style={{ marginBottom: '8px' }}><strong>Autonomous Mode:</strong> The LLM reads all candidates and picks the winner. If it gets confused (score &lt; 85%), it falls back to Transparent mode and asks the user.</li>
-            <li style={{ marginBottom: '8px' }}><strong>Hybrid Mode (The Sweet Spot):</strong> We use the LLM to guess, but if the LLM gets confused, <i>we don't bother the user with a popup</i>. The engine quietly intercepts the failure, auto-selects the highest-scoring heuristic match from Phase 1, and proceeds.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Phase 0 Hard-Stop:</strong> If someone explicitly passes in handles that already map to two <i>different</i> people in our DB, we immediately throw an error and abort. We never silently merge them.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Strict Mode:</strong> No AI involved. We only link accounts if we find a literal URL pointing to it in their bio (like a Twitter link in a GitHub readme). It's 100% deterministic and safe.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Transparent Mode:</strong> Pure human-in-the-loop. If we get multiple hits for a name search, we pause the pipeline and pop up a modal asking the user to manually pick the right one.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Autonomous Mode:</strong> We dump the candidate JSONs into the LLM and let it guess. If the AI isn't super confident (score &lt; 85%), it bails out and falls back to Transparent mode.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Hybrid Mode:</strong> This is what we use to prevent UI fatigue. The LLM tries to guess, but if it gets confused, instead of bothering the user with a popup, the backend just quietly takes the top heuristic match from Phase 1 and moves on.</li>
           </ul>
         </section>
 
